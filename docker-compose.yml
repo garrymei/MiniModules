@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: minimodules-postgres
+    environment:
+      POSTGRES_DB: minimodules
+      POSTGRES_USER: minimodules
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - minimodules-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: minimodules-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - minimodules-network
+
+  # 可选：Redis Commander (Redis管理界面)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: minimodules-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - minimodules-network
+
+  # 可选：pgAdmin (PostgreSQL管理界面)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: minimodules-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@minimodules.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    networks:
+      - minimodules-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  minimodules-network:
+    driver: bridge

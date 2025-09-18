@@ -1,0 +1,80 @@
+{
+  "id": "booking",
+  "name": "预约模块",
+  "version": "1.0.0",
+  "description": "场馆预约功能模块，支持时段管理、预约创建、预约管理",
+  "category": "business",
+  "routes": [
+    {
+      "path": "/booking/slots",
+      "component": "SlotListPage",
+      "title": "预约时段",
+      "icon": "calendar"
+    },
+    {
+      "path": "/booking/create",
+      "component": "BookingCreatePage",
+      "title": "创建预约",
+      "icon": "plus"
+    },
+    {
+      "path": "/booking/my-bookings",
+      "component": "MyBookingsPage",
+      "title": "我的预约",
+      "icon": "list"
+    }
+  ],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "slot_duration": {
+        "type": "number",
+        "default": 60,
+        "minimum": 15,
+        "maximum": 480,
+        "description": "时段长度（分钟）"
+      },
+      "advance_booking_days": {
+        "type": "number",
+        "default": 7,
+        "minimum": 1,
+        "maximum": 30,
+        "description": "可提前预约天数"
+      },
+      "max_people_per_slot": {
+        "type": "number",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 100,
+        "description": "每时段最大人数"
+      },
+      "cancellation_hours": {
+        "type": "number",
+        "default": 2,
+        "minimum": 0,
+        "maximum": 24,
+        "description": "可取消预约提前小时数"
+      }
+    },
+    "required": ["slot_duration", "advance_booking_days"]
+  },
+  "capabilities": [
+    "slot_management",
+    "booking_creation",
+    "booking_cancellation",
+    "availability_check"
+  ],
+  "dependencies": ["user"],
+  "permissions": {
+    "read": ["customer", "staff", "admin"],
+    "write": ["customer", "staff", "admin"],
+    "admin": ["admin"]
+  },
+  "api_endpoints": [
+    "GET /api/booking/slots",
+    "POST /api/booking/bookings",
+    "GET /api/booking/bookings",
+    "PUT /api/booking/bookings/{id}",
+    "DELETE /api/booking/bookings/{id}"
+  ]
+}

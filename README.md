@@ -1,5 +1,48 @@
 # MiniModules
 
+**模块化的微信小程序平台，支持多租户、多行业、可配置的微服务架构。**
+
+A modular microservices platform with mobile frontend, admin dashboard, and backend services.
+
+## Project Structure
+
+```
+/mini-modules
+├─ /docs                    # 需求、设计文档
+├─ /packages
+│ ├─ /mobile               # 小程序前端
+│ ├─ /admin                # 后台管理平台
+│ ├─ /api                  # 后端服务（REST/GraphQL）
+│ └─ /libs                 # 公共库：ui、sdk、module-spec
+├─ /infra                  # k8s / docker / terraform 配置
+└─ README.md
+```
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- Docker
+- Kubernetes (for production)
+
+### Development Setup
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Start development servers: `npm run dev`
+
+## Architecture
+
+This project follows a microservices architecture with:
+- **Mobile Frontend**: Mini-program frontend application
+- **Admin Dashboard**: Web-based administrative interface
+- **API Services**: Backend services providing REST/GraphQL APIs
+- **Shared Libraries**: Common UI components, SDKs, and module specifications
+- **Infrastructure**: Container orchestration and deployment configurations
+
+## Contributing
+
+Please read our contributing guidelines before submitting pull requests.
+
 **MiniModules — 模块化的微信小程序平台（通用行业/多租户）**
 
 ## 项目定位
