@@ -45,8 +45,8 @@ app.use('*', (req, res) => {
 })
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 API server running on port ${PORT}`)
+app.listen(PORT, 'localhost', () => {
+  console.log(`🚀 API server running on localhost:${PORT}`)
   console.log(`📊 Health check: http://localhost:${PORT}/health`)
 })
 
