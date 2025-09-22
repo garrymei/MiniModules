@@ -1,0 +1,13 @@
+{
+  "miniprogramRoot": "dist",
+  "compileType": "miniprogram",
+  "appid": "touristappid",
+  "projectname": "MiniModulesMobile",
+  "setting": {
+    "urlCheck": false,
+    "minified": true,
+    "es6": true,
+    "postcss": true,
+    "enhance": true
+  }
+}

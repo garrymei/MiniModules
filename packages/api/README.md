@@ -1,116 +1,189 @@
-# API Service
+<p align="center">
+  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+</p>
 
-后端服务（REST/GraphQL）模块，提供租户配置、模块管理和业务API。
+[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
+[circleci-url]: https://circleci.com/gh/nestjs/nest
 
-## 技术栈
+  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+    <p align="center">
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
+<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
+<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
+<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
+<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
+<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
+  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
+    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
+  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+</p>
+  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
+  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-- Node.js + Express/Fastify
-- TypeScript
-- PostgreSQL (主数据库)
-- Redis (缓存/会话)
-- Prisma/TypeORM (ORM)
-- JWT (认证)
+## Description
 
-## 快速启动
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-### 1. 环境配置
-
-复制环境变量模板：
-```bash
-cp .env.example .env
-```
-
-编辑 `.env` 文件，配置数据库连接和Redis：
-```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/minimodules"
-REDIS_URL="redis://localhost:6379"
-
-# JWT
-JWT_SECRET="your-jwt-secret-key"
-
-# API
-PORT=3000
-NODE_ENV=development
-```
-
-### 2. 启动依赖服务
-
-使用 Docker Compose 启动 PostgreSQL 和 Redis：
-```bash
-docker-compose up -d
-```
-
-### 3. 安装依赖
+## Project setup
 
 ```bash
-npm install
+$ pnpm install
 ```
 
-### 4. 数据库迁移
+## Compile and run the project
 
 ```bash
-npm run db:migrate
-npm run db:seed
+# development
+$ pnpm run start
+
+# watch mode
+$ pnpm run start:dev
+
+# production mode
+$ pnpm run start:prod
 ```
 
-### 5. 启动开发服务器
+## Database
 
 ```bash
-npm run dev
+# Run pending migrations
+pnpm --filter ./packages/api migration:run
+
+# Revert the latest migration
+pnpm --filter ./packages/api migration:revert
+
+# Generate a new migration (replace the file name as needed)
+pnpm --filter ./packages/api migration:generate src/migrations/AddExampleTable
 ```
 
-API服务将在 http://localhost:3000 启动
-
-## 核心API端点
-
-### 租户配置
-- `GET /api/tenant/{id}/config` - 获取租户配置和启用的模块
-- `PUT /api/tenant/{id}/config` - 更新租户配置
-
-### 模块管理
-- `GET /api/modules` - 获取所有可用模块
-- `GET /api/modules/{id}` - 获取模块详情
-
-### 业务API
-- `POST /api/ordering/orders` - 创建订单
-- `GET /api/booking/slots` - 获取预约时段
-- `POST /api/payment/charge` - 处理支付
-
-## 开发规范
-
-### 模块化约定
-
-每个业务模块需要：
-1. 在 `src/modules/{module-name}/` 下实现
-2. 包含 `routes.ts`、`service.ts`、`types.ts`
-3. 在 `libs/module-spec` 中定义 `module.json` 规范
-
-### 数据库设计
-
-- 多租户隔离：使用 `tenant_id` 字段
-- 模块配置：存储在 `module_configs` 表
-- 主题配置：存储在 `tenant_themes` 表
-
-## 测试
+## Authentication
 
 ```bash
-# 单元测试
-npm run test
+# Obtain a JWT using mock credentials
+curl -X POST http://localhost:3000/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}'
 
-# 集成测试
-npm run test:integration
-
-# E2E测试
-npm run test:e2e
+# Use the token to access a protected admin route
+curl http://localhost:3000/admin/profile \
+  -H 'Authorization: Bearer <token>'
 ```
 
-## 部署
+## Tenant configuration API
 
 ```bash
-# 构建
-npm run build
+# Fetch configuration for a tenant (restaurant example)
+curl http://localhost:3000/api/tenant/11111111-1111-1111-1111-111111111111/config
 
-# 生产启动
-npm start
+# Update configuration (requires admin token)
+curl -X PUT http://localhost:3000/admin/tenant/11111111-1111-1111-1111-111111111111/config \
+  -H 'Authorization: Bearer <token>' \
+  -H 'Content-Type: application/json' \
+  -d '{"tenantId":"11111111-1111-1111-1111-111111111111","industry":"restaurant","enabledModules":["ordering"],"theme":{}}'
 ```
+
+## Products & Orders
+
+```bash
+# Create a product with SKUs (admin only)
+curl -X POST http://localhost:3000/admin/products \
+  -H 'Authorization: Bearer <token>' \
+  -H 'Content-Type: application/json' \
+  -d '{"tenantId":"11111111-1111-1111-1111-111111111111","title":"Combo Meal","status":"active","skus":[{"price":19.99,"stock":20}]}'
+
+# Place an order
+curl -X POST http://localhost:3000/api/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"tenantId":"11111111-1111-1111-1111-111111111111","userId":"user-001","items":[{"skuId":"<sku-id>","quantity":2}]}'
+```
+
+## Booking API
+
+```bash
+# Create resource and rule (admin only)
+curl -X POST http://localhost:3000/admin/resources \
+  -H 'Authorization: Bearer <token>' \
+  -H 'Content-Type: application/json' \
+  -d '{"tenantId":"22222222-2222-2222-2222-222222222222","name":"Room A","type":"room"}'
+
+curl -X POST http://localhost:3000/admin/resources/<resource-id>/rules \
+  -H 'Authorization: Bearer <token>' \
+  -H 'Content-Type: application/json' \
+  -d '{"slotMinutes":60,"maxBookDays":14,"openHours":{"mon":[["09:00","18:00"]]}}'
+
+# Query slots and create a booking
+curl "http://localhost:3000/api/booking/slots?resourceId=<resource-id>&date=2025-09-22"
+
+curl -X POST http://localhost:3000/api/bookings \
+  -H 'Content-Type: application/json' \
+  -d '{"resourceId":"<resource-id>","tenantId":"22222222-2222-2222-2222-222222222222","userId":"user-123","start":"2025-09-22T09:00:00.000Z","end":"2025-09-22T10:00:00.000Z"}'
+```
+
+## Payments (mock)
+
+```bash
+# Create mock prepay info for an order
+curl -X POST http://localhost:3000/api/pay/create \
+  -H 'Content-Type: application/json' \
+  -d '{"orderId":"<order-id>"}'
+
+# Mock notify callback (currently logs payload)
+curl -X POST http://localhost:3000/api/pay/notify \
+  -H 'Content-Type: application/json' \
+  -d '{"orderId":"<order-id>","status":"SUCCESS"}'
+```
+
+## Run tests
+
+```bash
+# unit tests
+$ pnpm run test
+
+# e2e tests
+$ pnpm run test:e2e
+
+# test coverage
+$ pnpm run test:cov
+```
+
+## Deployment
+
+When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+
+If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+
+```bash
+$ pnpm install -g mau
+$ mau deploy
+```
+
+With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+
+## Resources
+
+Check out a few resources that may come in handy when working with NestJS:
+
+- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
+- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
+- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
+- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
+- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
+- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
+- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
+- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+
+## Support
+
+Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+
+## Stay in touch
+
+- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
+- Website - [https://nestjs.com](https://nestjs.com/)
+- Twitter - [@nestframework](https://twitter.com/nestframework)
+
+## License
+
+Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
