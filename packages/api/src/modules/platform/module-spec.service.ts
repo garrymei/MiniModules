@@ -1,7 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { ModuleSpec } from '@minimodules/libs';
+// 临时定义ModuleSpec接口，后续需要从libs包导入
+interface ModuleSpec {
+  id: string;
+  key: string;
+  name: string;
+  version: string;
+  description: string;
+  routes: any[];
+  configSchema: any;
+  config_schema: any; // 兼容旧字段名
+  capabilities: any;
+  dependencies: string[];
+}
 
 @Injectable()
 export class ModuleSpecService {
@@ -71,11 +83,12 @@ export class ModuleSpecService {
       const errors: string[] = [];
       
       // 如果模块没有配置模式，则认为验证通过
-      if (!spec.config_schema) {
+      const configSchema = spec.config_schema || spec.configSchema;
+      if (!configSchema) {
         return { isValid: true };
       }
 
-      const { properties = {}, required = [], type } = spec.config_schema;
+      const { properties = {}, required = [], type } = configSchema;
       
       // 检查根类型
       if (type && type !== 'object') {
