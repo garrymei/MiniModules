@@ -1,0 +1,82 @@
+{
+  "tenantId": "tenant_xxx",
+  "industry": "restaurant",
+  "theme": {
+    "primaryColor": "#FF6A00",
+    "buttonRadius": 10,
+    "logo": "https://example.com/logo.png",
+    "name": "示例餐厅"
+  },
+  "enabledModules": ["ordering", "user", "pay", "cms"],
+  "i18n": {
+    "locale": "zh-CN"
+  },
+  "modules": {
+    "ordering": {
+      "mode": "both",
+      "specSchema": "simple",
+      "minOrderAmount": 0,
+      "packageFee": 2,
+      "tableNumberRequired": false,
+      "showSpicyLevel": true,
+      "showCalories": false
+    },
+    "booking": {
+      "slotMinutes": 60,
+      "maxBookableDays": 7,
+      "cancelPolicy": "24h",
+      "checkinMethod": "qrcode"
+    },
+    "ecommerce": {
+      "shippingTemplate": "standard",
+      "freeShippingThreshold": 99,
+      "priceDisplay": "simple",
+      "promotion": {
+        "coupon": true,
+        "fullReduction": true,
+        "flashSale": false
+      }
+    },
+    "ticketing": {
+      "entryWindow": {
+        "beforeEvent": 30,
+        "afterEvent": 0
+      },
+      "refundPolicy": "24h",
+      "qrCodeStyle": {
+        "size": 200,
+        "color": "#000000"
+      }
+    },
+    "subscription": {
+      "tiers": [
+        {
+          "id": "basic",
+          "name": "基础会员",
+          "price": 29,
+          "benefits": ["免费配送", "专属客服"]
+        }
+      ],
+      "period": "monthly",
+      "renewalNoticeDays": 7
+    },
+    "cms": {
+      "categoryStructure": {
+        "banners": ["首页轮播"],
+        "announcements": ["重要通知"],
+        "activities": ["限时活动"],
+        "articles": ["美食资讯"]
+      },
+      "jumpStrategy": {
+        "bannerJump": "page",
+        "articleJump": "internal"
+      }
+    }
+  },
+  "ui": {
+    "homepageLayout": "grid-2",
+    "showSearch": true,
+    "cardStyle": "elevated",
+    "imageAspectRatio": "1:1"
+  }
+}

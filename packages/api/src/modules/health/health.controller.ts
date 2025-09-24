@@ -4,6 +4,10 @@ import { Controller, Get } from '@nestjs/common';
 export class HealthController {
   @Get('/healthz')
   health() { 
-    return { ok: true, ts: Date.now() }; 
+    return { 
+      ok: true, 
+      ts: Date.now(),
+      message: 'API is running'
+    }; 
   }
 }

@@ -1,0 +1,97 @@
+{
+  "id": "subscription",
+  "name": "会员模块",
+  "version": "1.0.0",
+  "description": "会员订阅功能模块，支持会员权益、购买续费、到期提醒",
+  "category": "business",
+  "routes": [
+    {
+      "path": "/subscription/home",
+      "component": "SubscriptionHomePage",
+      "title": "会员首页",
+      "icon": "crown"
+    },
+    {
+      "path": "/subscription/benefits",
+      "component": "BenefitsPage",
+      "title": "权益页",
+      "icon": "gift"
+    },
+    {
+      "path": "/subscription/purchase",
+      "component": "PurchasePage",
+      "title": "购买/续费",
+      "icon": "credit-card"
+    },
+    {
+      "path": "/subscription/orders",
+      "component": "SubscriptionOrdersPage",
+      "title": "订单",
+      "icon": "list"
+    },
+    {
+      "path": "/subscription/profile",
+      "component": "SubscriptionProfilePage",
+      "title": "会员档案",
+      "icon": "user"
+    }
+  ],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "tiers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "price": { "type": "number" },
+            "benefits": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "description": "会员等级/权益"
+      },
+      "period": {
+        "type": "string",
+        "enum": ["monthly", "yearly"],
+        "default": "monthly",
+        "description": "订阅周期"
+      },
+      "renewalNoticeDays": {
+        "type": "number",
+        "default": 7,
+        "minimum": 1,
+        "maximum": 30,
+        "description": "续费提醒提前天数"
+      },
+      "autoRenewal": {
+        "type": "boolean",
+        "default": false,
+        "description": "是否自动续费"
+      }
+    },
+    "required": ["tiers", "period"]
+  },
+  "capabilities": [
+    "subscription_management",
+    "benefit_control",
+    "renewal_processing",
+    "expiry_notification",
+    "payment_integration"
+  ],
+  "dependencies": ["user", "payment"],
+  "permissions": {
+    "read": ["customer", "staff", "admin"],
+    "write": ["customer", "staff", "admin"],
+    "admin": ["admin"]
+  },
+  "api_endpoints": [
+    "GET /api/subscription/plans",
+    "POST /api/subscription/subscribe",
+    "GET /api/subscription/status",
+    "POST /api/subscription/renew",
+    "GET /api/subscription/benefits",
+    "GET /api/subscription/orders"
+  ]
+}

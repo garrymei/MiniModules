@@ -123,6 +123,12 @@ export class InitCoreTables1758614000000 implements MigrationInterface {
             default: 1,
           },
           {
+            name: 'status',
+            type: 'varchar',
+            length: '50',
+            default: "'draft'",
+          },
+          {
             name: 'createdAt',
             type: 'timestamp',
             default: 'CURRENT_TIMESTAMP',

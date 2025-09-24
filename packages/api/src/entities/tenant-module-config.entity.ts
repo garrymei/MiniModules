@@ -3,21 +3,24 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 @Entity('tenant_module_config')
 export class TenantModuleConfig {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ type: 'uuid' })
   @Index()
-  tenantId: string;
+  tenantId!: string;
 
   @Column({ type: 'jsonb' })
-  configJson: Record<string, any>;
+  configJson!: Record<string, any>;
 
   @Column({ type: 'int', default: 1 })
-  version: number;
+  version!: number;
+
+  @Column({ type: 'varchar', length: 50, default: 'draft' })
+  status!: 'draft' | 'published';
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

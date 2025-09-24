@@ -1,0 +1,136 @@
+{
+  "restaurant": {
+    "name": "餐饮行业模板",
+    "description": "适用于餐厅、咖啡厅、快餐店等餐饮业态",
+    "defaultModules": ["ordering", "user", "pay", "cms"],
+    "defaultTheme": {
+      "primaryColor": "#FF6A00",
+      "buttonRadius": 8,
+      "cardStyle": "elevated"
+    },
+    "defaultConfig": {
+      "ordering": {
+        "mode": "both",
+        "specSchema": "simple",
+        "minOrderAmount": 20,
+        "packageFee": 2,
+        "showSpicyLevel": true
+      },
+      "ui": {
+        "homepageLayout": "grid-2",
+        "showSearch": true,
+        "imageAspectRatio": "1:1"
+      }
+    }
+  },
+  "fitness": {
+    "name": "健身行业模板",
+    "description": "适用于健身房、瑜伽馆、游泳馆等运动场馆",
+    "defaultModules": ["booking", "user", "pay", "cms"],
+    "defaultTheme": {
+      "primaryColor": "#1890FF",
+      "buttonRadius": 6,
+      "cardStyle": "flat"
+    },
+    "defaultConfig": {
+      "booking": {
+        "slotMinutes": 60,
+        "maxBookableDays": 7,
+        "cancelPolicy": "24h",
+        "checkinMethod": "qrcode"
+      },
+      "ui": {
+        "homepageLayout": "list",
+        "showSearch": false,
+        "imageAspectRatio": "16:9"
+      }
+    }
+  },
+  "retail": {
+    "name": "零售行业模板",
+    "description": "适用于服装店、数码店、超市等零售业态",
+    "defaultModules": ["ecommerce", "user", "pay", "cms"],
+    "defaultTheme": {
+      "primaryColor": "#52C41A",
+      "buttonRadius": 4,
+      "cardStyle": "elevated"
+    },
+    "defaultConfig": {
+      "ecommerce": {
+        "shippingTemplate": "standard",
+        "freeShippingThreshold": 99,
+        "priceDisplay": "withMarketPrice",
+        "promotion": {
+          "coupon": true,
+          "fullReduction": true,
+          "flashSale": true
+        }
+      },
+      "ui": {
+        "homepageLayout": "grid-3",
+        "showSearch": true,
+        "imageAspectRatio": "1:1"
+      }
+    }
+  },
+  "entertainment": {
+    "name": "娱乐行业模板",
+    "description": "适用于电影院、KTV、游乐场等娱乐场所",
+    "defaultModules": ["ticketing", "user", "pay", "cms"],
+    "defaultTheme": {
+      "primaryColor": "#722ED1",
+      "buttonRadius": 12,
+      "cardStyle": "elevated"
+    },
+    "defaultConfig": {
+      "ticketing": {
+        "entryWindow": {
+          "beforeEvent": 30,
+          "afterEvent": 0
+        },
+        "refundPolicy": "24h",
+        "seatMapEnabled": false
+      },
+      "ui": {
+        "homepageLayout": "grid-2",
+        "showSearch": true,
+        "imageAspectRatio": "16:9"
+      }
+    }
+  },
+  "membership": {
+    "name": "会员制行业模板",
+    "description": "适用于会员制服务、订阅制产品等",
+    "defaultModules": ["subscription", "user", "pay", "cms"],
+    "defaultTheme": {
+      "primaryColor": "#FA8C16",
+      "buttonRadius": 8,
+      "cardStyle": "elevated"
+    },
+    "defaultConfig": {
+      "subscription": {
+        "tiers": [
+          {
+            "id": "basic",
+            "name": "基础会员",
+            "price": 29,
+            "benefits": ["基础权益"]
+          },
+          {
+            "id": "premium",
+            "name": "高级会员",
+            "price": 99,
+            "benefits": ["高级权益", "专属服务"]
+          }
+        ],
+        "period": "monthly",
+        "renewalNoticeDays": 7
+      },
+      "ui": {
+        "homepageLayout": "list",
+        "showSearch": false,
+        "imageAspectRatio": "4:3"
+      }
+    }
+  }
+}

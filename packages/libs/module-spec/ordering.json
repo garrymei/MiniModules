@@ -6,10 +6,22 @@
   "category": "business",
   "routes": [
     {
+      "path": "/ordering/categories",
+      "component": "CategoryPage",
+      "title": "分类",
+      "icon": "grid"
+    },
+    {
       "path": "/ordering/menu",
       "component": "MenuPage",
       "title": "菜单",
       "icon": "menu"
+    },
+    {
+      "path": "/ordering/dish-detail",
+      "component": "DishDetailPage",
+      "title": "菜品详情",
+      "icon": "info"
     },
     {
       "path": "/ordering/cart",
@@ -18,15 +30,66 @@
       "icon": "shopping-cart"
     },
     {
+      "path": "/ordering/checkout",
+      "component": "CheckoutPage",
+      "title": "结算",
+      "icon": "credit-card"
+    },
+    {
       "path": "/ordering/orders",
       "component": "OrderListPage",
       "title": "我的订单",
       "icon": "list"
+    },
+    {
+      "path": "/ordering/order-detail",
+      "component": "OrderDetailPage",
+      "title": "订单详情",
+      "icon": "file-text"
     }
   ],
   "config_schema": {
     "type": "object",
     "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["dine_in", "takeaway", "both"],
+        "default": "both",
+        "description": "点餐模式"
+      },
+      "specSchema": {
+        "type": "string",
+        "enum": ["simple", "grouped"],
+        "default": "simple",
+        "description": "规格模式：单规格/多规格组合"
+      },
+      "minOrderAmount": {
+        "type": "number",
+        "default": 0,
+        "minimum": 0,
+        "description": "最低起送金额"
+      },
+      "packageFee": {
+        "type": "number",
+        "default": 0,
+        "minimum": 0,
+        "description": "打包费"
+      },
+      "tableNumberRequired": {
+        "type": "boolean",
+        "default": false,
+        "description": "是否需要桌号"
+      },
+      "showSpicyLevel": {
+        "type": "boolean",
+        "default": true,
+        "description": "是否显示辣度等级"
+      },
+      "showCalories": {
+        "type": "boolean",
+        "default": false,
+        "description": "是否显示卡路里"
+      },
       "time_slot_length": {
         "type": "number",
         "default": 30,
@@ -40,19 +103,9 @@
         "minimum": 1,
         "maximum": 200,
         "description": "单次最大点餐数量"
-      },
-      "enable_takeout": {
-        "type": "boolean",
-        "default": true,
-        "description": "是否支持外卖"
-      },
-      "enable_dine_in": {
-        "type": "boolean",
-        "default": true,
-        "description": "是否支持堂食"
       }
     },
-    "required": ["time_slot_length", "max_items_per_order"]
+    "required": ["mode", "specSchema"]
   },
   "capabilities": [
     "menu_display",

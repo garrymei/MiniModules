@@ -1,8 +1,8 @@
-import { Controller, Get, Put, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Post, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { TenantConfigService } from './tenant-config.service';
-import { TenantConfigDto, UpdateTenantConfigDto } from './dto/tenant-config.dto';
+import { TenantConfigDto, UpdateTenantConfigDto, ConfigHistoryDto } from './dto/tenant-config.dto';
 
 @ApiTags('tenant-config')
 @Controller()
@@ -46,6 +46,27 @@ export class TenantConfigController {
     return this.tenantConfigService.updateTenantConfig(tenantId, configDto);
   }
 
+  @Post('admin/tenant/:id/config/publish')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '发布租户配置' })
+  @ApiParam({ name: 'id', description: '租户ID' })
+  @ApiResponse({ 
+    status: 200, 
+    description: '配置发布成功',
+    type: TenantConfigDto
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: '租户配置不存在'
+  })
+  async publishTenantConfig(
+    @Param('id') tenantId: string,
+    @Body('version') version: number
+  ): Promise<TenantConfigDto> {
+    return this.tenantConfigService.publishTenantConfig(tenantId, version);
+  }
+
   @Get('admin/tenant/:id/config/history')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -53,7 +74,8 @@ export class TenantConfigController {
   @ApiParam({ name: 'id', description: '租户ID' })
   @ApiResponse({ 
     status: 200, 
-    description: '配置历史列表'
+    description: '配置历史列表',
+    type: [ConfigHistoryDto]
   })
   async getTenantConfigHistory(@Param('id') tenantId: string) {
     return this.tenantConfigService.getTenantConfigHistory(tenantId);

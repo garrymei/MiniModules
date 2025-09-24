@@ -1,4 +1,4 @@
-import { IsString, IsArray, IsOptional, ValidateNested, IsObject } from 'class-validator';
+import { IsString, IsArray, IsOptional, ValidateNested, IsObject, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -36,7 +36,30 @@ export class TenantConfigDto {
 }
 
 export class UpdateTenantConfigDto extends TenantConfigDto {
-  @ApiProperty({ description: '配置版本', example: 1 })
+  @ApiProperty({ description: '配置版本', example: 1, required: false })
   @IsOptional()
+  @IsNumber()
   version?: number;
+}
+
+export class ConfigHistoryDto {
+  @ApiProperty({ description: '配置版本号' })
+  @IsNumber()
+  version: number;
+
+  @ApiProperty({ description: '配置状态' })
+  @IsString()
+  status: string;
+
+  @ApiProperty({ description: '创建时间' })
+  @IsString()
+  createdAt: string;
+
+  @ApiProperty({ description: '更新时间' })
+  @IsString()
+  updatedAt: string;
+
+  @ApiProperty({ description: '配置内容' })
+  @IsObject()
+  config: TenantConfigDto;
 }

@@ -1,0 +1,67 @@
+{
+  "color": {
+    "primary": "--color-primary",
+    "secondary": "--color-secondary",
+    "success": "--color-success",
+    "warning": "--color-warning",
+    "error": "--color-error",
+    "text": "--color-text",
+    "textSecondary": "--color-text-secondary",
+    "background": "--color-background",
+    "surface": "--color-surface"
+  },
+  "spacing": {
+    "xs": "--spacing-xs",
+    "sm": "--spacing-sm",
+    "md": "--spacing-md",
+    "lg": "--spacing-lg",
+    "xl": "--spacing-xl"
+  },
+  "radius": {
+    "sm": "--radius-sm",
+    "md": "--radius-md",
+    "lg": "--radius-lg",
+    "xl": "--radius-xl"
+  },
+  "shadow": {
+    "sm": "--shadow-sm",
+    "md": "--shadow-md",
+    "lg": "--shadow-lg"
+  },
+  "typography": {
+    "fontSize": {
+      "xs": "--font-size-xs",
+      "sm": "--font-size-sm",
+      "base": "--font-size-base",
+      "lg": "--font-size-lg",
+      "xl": "--font-size-xl"
+    },
+    "fontWeight": {
+      "normal": "--font-weight-normal",
+      "medium": "--font-weight-medium",
+      "semibold": "--font-weight-semibold",
+      "bold": "--font-weight-bold"
+    },
+    "lineHeight": {
+      "tight": "--line-height-tight",
+      "normal": "--line-height-normal",
+      "relaxed": "--line-height-relaxed"
+    }
+  },
+  "component": {
+    "cardStyle": {
+      "flat": "border: 1px solid var(--color-border); box-shadow: none;",
+      "elevated": "border: none; box-shadow: var(--shadow-md);"
+    },
+    "imageAspectRatio": {
+      "1:1": "aspect-ratio: 1/1;",
+      "4:3": "aspect-ratio: 4/3;",
+      "16:9": "aspect-ratio: 16/9;"
+    },
+    "homepageLayout": {
+      "grid-2": "grid-template-columns: repeat(2, 1fr);",
+      "grid-3": "grid-template-columns: repeat(3, 1fr);",
+      "list": "display: flex; flex-direction: column;"
+    }
+  }
+}

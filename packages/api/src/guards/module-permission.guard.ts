@@ -1,58 +1,53 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { TenantEntitlement } from '../entities/tenant-entitlement.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { TenantEntitlements } from '../entities/tenant-entitlements.entity';
-import { MODULE_KEY } from '../decorators/require-module.decorator';
+
+export const RequireModule = (moduleKey: string) => {
+  return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+    Reflect.defineMetadata('required_module', moduleKey, descriptor.value);
+  };
+};
 
 @Injectable()
 export class ModulePermissionGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
-    @InjectRepository(TenantEntitlements)
-    private entitlementsRepository: Repository<TenantEntitlements>,
+    @InjectRepository(TenantEntitlement)
+    private tenantEntitlementRepository: Repository<TenantEntitlement>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredModule = this.reflector.getAllAndOverride<string>(MODULE_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-
+    const requiredModule = this.reflector.get<string>('required_module', context.getHandler());
+    
     if (!requiredModule) {
-      return true; // 如果没有指定模块要求，则允许访问
+      return true; // 没有模块要求，允许访问
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const tenantId = request.params.tenantId || request.query.tenantId || request.user?.tenantId;
 
-    if (!user || !user.tenants || user.tenants.length === 0) {
-      throw new ForbiddenException('No tenant access');
+    if (!tenantId) {
+      throw new ForbiddenException('Tenant ID is required');
     }
 
-    // 检查用户是否有任何租户启用了该模块
-    const tenantIds = user.tenants;
-    const now = new Date();
-
-    const entitlements = await this.entitlementsRepository.find({
+    // 检查租户是否有该模块的授权
+    const entitlement = await this.tenantEntitlementRepository.findOne({
       where: {
-        tenantId: tenantIds[0], // 简化：使用第一个租户
+        tenantId,
         moduleKey: requiredModule,
-        status: 'enabled',
+        status: 'active',
       },
     });
 
-    if (entitlements.length === 0) {
-      throw new ForbiddenException(`Module '${requiredModule}' is not enabled for this tenant`);
+    if (!entitlement) {
+      throw new ForbiddenException(`Module ${requiredModule} is not authorized for tenant ${tenantId}`);
     }
 
     // 检查是否过期
-    const validEntitlement = entitlements.find(entitlement => 
-      !entitlement.expiresAt || entitlement.expiresAt > now
-    );
-
-    if (!validEntitlement) {
-      throw new ForbiddenException(`Module '${requiredModule}' has expired for this tenant`);
+    if (entitlement.expiresAt && entitlement.expiresAt < new Date()) {
+      throw new ForbiddenException(`Module ${requiredModule} authorization has expired`);
     }
 
     return true;

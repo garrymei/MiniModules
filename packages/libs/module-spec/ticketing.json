@@ -1,0 +1,102 @@
+{
+  "id": "ticketing",
+  "name": "票务模块",
+  "version": "1.0.0",
+  "description": "票务活动功能模块，支持活动展示、票种选择、电子票、验票核销",
+  "category": "business",
+  "routes": [
+    {
+      "path": "/ticketing/events",
+      "component": "EventListPage",
+      "title": "活动列表",
+      "icon": "calendar"
+    },
+    {
+      "path": "/ticketing/event-detail",
+      "component": "EventDetailPage",
+      "title": "活动详情",
+      "icon": "info"
+    },
+    {
+      "path": "/ticketing/ticket-selection",
+      "component": "TicketSelectionPage",
+      "title": "票种选择",
+      "icon": "ticket"
+    },
+    {
+      "path": "/ticketing/order",
+      "component": "TicketOrderPage",
+      "title": "下单",
+      "icon": "credit-card"
+    },
+    {
+      "path": "/ticketing/e-ticket",
+      "component": "ETicketPage",
+      "title": "电子票",
+      "icon": "smartphone"
+    },
+    {
+      "path": "/ticketing/my-tickets",
+      "component": "MyTicketsPage",
+      "title": "我的票券",
+      "icon": "list"
+    }
+  ],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "entryWindow": {
+        "type": "object",
+        "properties": {
+          "beforeEvent": { "type": "number", "default": 30, "description": "活动开始前可入场时间（分钟）" },
+          "afterEvent": { "type": "number", "default": 0, "description": "活动结束后可入场时间（分钟）" }
+        },
+        "description": "入场时间窗"
+      },
+      "seatMapEnabled": {
+        "type": "boolean",
+        "default": false,
+        "description": "是否启用座位图（预留）"
+      },
+      "refundPolicy": {
+        "type": "string",
+        "enum": ["no_refund", "24h", "48h"],
+        "default": "24h",
+        "description": "退票政策"
+      },
+      "qrCodeStyle": {
+        "type": "object",
+        "properties": {
+          "size": { "type": "number", "default": 200 },
+          "logo": { "type": "string" },
+          "color": { "type": "string", "default": "#000000" }
+        },
+        "description": "二维码样式"
+      }
+    },
+    "required": ["entryWindow", "refundPolicy"]
+  },
+  "capabilities": [
+    "event_display",
+    "ticket_selection",
+    "order_creation",
+    "e_ticket_generation",
+    "qr_code_verification",
+    "refund_processing"
+  ],
+  "dependencies": ["user", "payment"],
+  "permissions": {
+    "read": ["customer", "staff", "admin"],
+    "write": ["customer", "staff", "admin"],
+    "admin": ["admin"]
+  },
+  "api_endpoints": [
+    "GET /api/ticketing/events",
+    "GET /api/ticketing/events/{id}",
+    "GET /api/ticketing/tickets/{eventId}",
+    "POST /api/ticketing/orders",
+    "GET /api/ticketing/orders",
+    "GET /api/ticketing/e-tickets/{orderId}",
+    "POST /api/ticketing/verify"
+  ]
+}

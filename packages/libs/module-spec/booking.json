@@ -6,57 +6,85 @@
   "category": "business",
   "routes": [
     {
-      "path": "/booking/slots",
-      "component": "SlotListPage",
-      "title": "预约时段",
+      "path": "/booking/resources",
+      "component": "ResourceListPage",
+      "title": "资源列表",
+      "icon": "grid"
+    },
+    {
+      "path": "/booking/calendar",
+      "component": "CalendarPage",
+      "title": "日历",
       "icon": "calendar"
     },
     {
-      "path": "/booking/create",
-      "component": "BookingCreatePage",
-      "title": "创建预约",
-      "icon": "plus"
+      "path": "/booking/slot-selection",
+      "component": "SlotSelectionPage",
+      "title": "时段选择",
+      "icon": "clock"
+    },
+    {
+      "path": "/booking/confirm",
+      "component": "BookingConfirmPage",
+      "title": "确认预约",
+      "icon": "check"
     },
     {
       "path": "/booking/my-bookings",
       "component": "MyBookingsPage",
       "title": "我的预约",
       "icon": "list"
+    },
+    {
+      "path": "/booking/booking-detail",
+      "component": "BookingDetailPage",
+      "title": "预约详情",
+      "icon": "file-text"
     }
   ],
   "config_schema": {
     "type": "object",
     "properties": {
-      "slot_duration": {
+      "slotMinutes": {
         "type": "number",
+        "enum": [30, 45, 60],
         "default": 60,
-        "minimum": 15,
-        "maximum": 480,
         "description": "时段长度（分钟）"
       },
-      "advance_booking_days": {
+      "openHours": {
+        "type": "object",
+        "properties": {
+          "monday": { "type": "object", "properties": { "start": { "type": "string" }, "end": { "type": "string" } } },
+          "tuesday": { "type": "object", "properties": { "start": { "type": "string" }, "end": { "type": "string" } } },
+          "wednesday": { "type": "object", "properties": { "start": { "type": "string" }, "end": { "type": "string" } } },
+          "thursday": { "type": "object", "properties": { "start": { "type": "string" }, "end": { "type": "string" } } },
+          "friday": { "type": "object", "properties": { "start": { "type": "string" }, "end": { "type": "string" } } },
+          "saturday": { "type": "object", "properties": { "start": { "type": "string" }, "end": { "type": "string" } } },
+          "sunday": { "type": "object", "properties": { "start": { "type": "string" }, "end": { "type": "string" } } }
+        },
+        "description": "营业时间（周几、起止）"
+      },
+      "maxBookableDays": {
         "type": "number",
         "default": 7,
         "minimum": 1,
         "maximum": 30,
         "description": "可提前预约天数"
       },
-      "max_people_per_slot": {
-        "type": "number",
-        "default": 10,
-        "minimum": 1,
-        "maximum": 100,
-        "description": "每时段最大人数"
+      "cancelPolicy": {
+        "type": "string",
+        "enum": ["free", "24h", "48h", "no_cancel"],
+        "default": "24h",
+        "description": "取消政策"
       },
-      "cancellation_hours": {
-        "type": "number",
-        "default": 2,
-        "minimum": 0,
-        "maximum": 24,
-        "description": "可取消预约提前小时数"
+      "checkinMethod": {
+        "type": "string",
+        "enum": ["qrcode", "staff"],
+        "default": "qrcode",
+        "description": "核销方式"
       }
     },
-    "required": ["slot_duration", "advance_booking_days"]
+    "required": ["slotMinutes", "maxBookableDays", "cancelPolicy"]
   },
   "capabilities": [
     "slot_management",

@@ -3,24 +3,24 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 
 @Entity('modules_catalog')
 export class ModulesCatalog {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ type: 'varchar', length: 100, unique: true })
   @Index()
-  key: string;
+  key!: string;
 
   @Column({ type: 'varchar', length: 255 })
-  name: string;
+  name!: string;
 
   @Column({ type: 'varchar', length: 50 })
-  version: string;
+  version!: string;
 
   @Column({ type: 'varchar', length: 50, default: 'active' })
-  status: string;
+  status!: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  capabilities: Record<string, any>;
+  capabilities!: Record<string, any>;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 }

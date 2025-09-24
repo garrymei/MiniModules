@@ -1,0 +1,108 @@
+{
+  "id": "ecommerce",
+  "name": "电商模块",
+  "version": "1.0.0",
+  "description": "零售电商功能模块，支持商品展示、购物车、订单管理、物流跟踪",
+  "category": "business",
+  "routes": [
+    {
+      "path": "/ecommerce/products",
+      "component": "ProductListPage",
+      "title": "商品列表",
+      "icon": "grid"
+    },
+    {
+      "path": "/ecommerce/product-detail",
+      "component": "ProductDetailPage",
+      "title": "商品详情",
+      "icon": "info"
+    },
+    {
+      "path": "/ecommerce/cart",
+      "component": "CartPage",
+      "title": "购物车",
+      "icon": "shopping-cart"
+    },
+    {
+      "path": "/ecommerce/checkout",
+      "component": "CheckoutPage",
+      "title": "结算",
+      "icon": "credit-card"
+    },
+    {
+      "path": "/ecommerce/address",
+      "component": "AddressPage",
+      "title": "地址管理",
+      "icon": "map-pin"
+    },
+    {
+      "path": "/ecommerce/orders",
+      "component": "OrderListPage",
+      "title": "我的订单",
+      "icon": "list"
+    },
+    {
+      "path": "/ecommerce/order-detail",
+      "component": "OrderDetailPage",
+      "title": "订单详情",
+      "icon": "file-text"
+    }
+  ],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "shippingTemplate": {
+        "type": "string",
+        "default": "standard",
+        "description": "运费模板"
+      },
+      "freeShippingThreshold": {
+        "type": "number",
+        "default": 99,
+        "minimum": 0,
+        "description": "免运费门槛"
+      },
+      "priceDisplay": {
+        "type": "string",
+        "enum": ["withMarketPrice", "simple"],
+        "default": "simple",
+        "description": "价格显示方式"
+      },
+      "promotion": {
+        "type": "object",
+        "properties": {
+          "coupon": { "type": "boolean", "default": true },
+          "fullReduction": { "type": "boolean", "default": true },
+          "flashSale": { "type": "boolean", "default": false }
+        },
+        "description": "促销活动配置"
+      }
+    },
+    "required": ["shippingTemplate", "freeShippingThreshold"]
+  },
+  "capabilities": [
+    "product_display",
+    "cart_management",
+    "order_creation",
+    "address_management",
+    "shipping_tracking",
+    "promotion_engine"
+  ],
+  "dependencies": ["user", "payment"],
+  "permissions": {
+    "read": ["customer", "staff", "admin"],
+    "write": ["customer", "staff", "admin"],
+    "admin": ["admin"]
+  },
+  "api_endpoints": [
+    "GET /api/ecommerce/products",
+    "GET /api/ecommerce/products/{id}",
+    "POST /api/ecommerce/cart",
+    "GET /api/ecommerce/cart",
+    "POST /api/ecommerce/orders",
+    "GET /api/ecommerce/orders",
+    "GET /api/ecommerce/orders/{id}",
+    "GET /api/ecommerce/addresses",
+    "POST /api/ecommerce/addresses"
+  ]
+}

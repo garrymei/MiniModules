@@ -1,0 +1,106 @@
+{
+  "id": "cms",
+  "name": "CMS模块",
+  "version": "1.0.0",
+  "description": "内容管理营销功能模块，支持轮播、公告、活动、文章管理",
+  "category": "business",
+  "routes": [
+    {
+      "path": "/cms/banners",
+      "component": "BannerListPage",
+      "title": "轮播图",
+      "icon": "image"
+    },
+    {
+      "path": "/cms/announcements",
+      "component": "AnnouncementListPage",
+      "title": "公告",
+      "icon": "megaphone"
+    },
+    {
+      "path": "/cms/activities",
+      "component": "ActivityListPage",
+      "title": "活动",
+      "icon": "calendar"
+    },
+    {
+      "path": "/cms/articles",
+      "component": "ArticleListPage",
+      "title": "文章",
+      "icon": "file-text"
+    },
+    {
+      "path": "/cms/article-detail",
+      "component": "ArticleDetailPage",
+      "title": "文章详情",
+      "icon": "book-open"
+    }
+  ],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "categoryStructure": {
+        "type": "object",
+        "properties": {
+          "banners": { "type": "array", "items": { "type": "string" } },
+          "announcements": { "type": "array", "items": { "type": "string" } },
+          "activities": { "type": "array", "items": { "type": "string" } },
+          "articles": { "type": "array", "items": { "type": "string" } }
+        },
+        "description": "栏目结构"
+      },
+      "richTextStyle": {
+        "type": "object",
+        "properties": {
+          "fontSize": { "type": "number", "default": 14 },
+          "lineHeight": { "type": "number", "default": 1.6 },
+          "fontFamily": { "type": "string", "default": "system" }
+        },
+        "description": "富文本风格"
+      },
+      "jumpStrategy": {
+        "type": "object",
+        "properties": {
+          "bannerJump": { "type": "string", "enum": ["page", "url", "module"], "default": "page" },
+          "articleJump": { "type": "string", "enum": ["internal", "external"], "default": "internal" }
+        },
+        "description": "跳转策略"
+      },
+      "publishRules": {
+        "type": "object",
+        "properties": {
+          "autoPublish": { "type": "boolean", "default": false },
+          "reviewRequired": { "type": "boolean", "default": true },
+          "maxBanners": { "type": "number", "default": 5 }
+        },
+        "description": "发布规则"
+      }
+    },
+    "required": ["categoryStructure", "jumpStrategy"]
+  },
+  "capabilities": [
+    "content_publishing",
+    "banner_management",
+    "article_management",
+    "activity_management",
+    "announcement_management",
+    "content_scheduling"
+  ],
+  "dependencies": ["user"],
+  "permissions": {
+    "read": ["customer", "staff", "admin"],
+    "write": ["staff", "admin"],
+    "admin": ["admin"]
+  },
+  "api_endpoints": [
+    "GET /api/cms/banners",
+    "POST /api/cms/banners",
+    "GET /api/cms/announcements",
+    "POST /api/cms/announcements",
+    "GET /api/cms/activities",
+    "POST /api/cms/activities",
+    "GET /api/cms/articles",
+    "POST /api/cms/articles",
+    "GET /api/cms/articles/{id}"
+  ]
+}
