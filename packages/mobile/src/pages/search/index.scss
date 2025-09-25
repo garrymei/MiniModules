@@ -1,0 +1,112 @@
+.search-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f6f7fb;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  font-size: 30px;
+}
+
+.search-button {
+  background: #1677ff;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 28px;
+}
+
+.search-status {
+  margin: 12px 0;
+  color: #666;
+  font-size: 26px;
+}
+
+.search-status__error {
+  color: #ff4d4f;
+}
+
+.search-list {
+  flex: 1;
+  padding-bottom: 24px;
+}
+
+.search-result {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+}
+
+.search-result__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.search-result__tag {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 24px;
+  color: #fff;
+}
+
+.search-result__tag--product {
+  background: #ff8f45;
+}
+
+.search-result__tag--resource {
+  background: #52c41a;
+}
+
+.search-result__tag--article {
+  background: #722ed1;
+}
+
+.search-result__score {
+  font-size: 24px;
+  color: #888;
+}
+
+.search-result__title {
+  font-weight: 600;
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.search-result__desc {
+  font-size: 26px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.search-result__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.search-result__meta-item {
+  background: #f4f6fa;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 24px;
+  color: #555;
+}

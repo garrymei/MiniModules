@@ -1,0 +1,246 @@
+.booking-select-page {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding-bottom: 100px;
+}
+
+.booking-header {
+  background: #fff;
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.booking-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.booking-section {
+  background: #fff;
+  margin: 12px 16px;
+  border-radius: var(--radius-md, 8px);
+  padding: 16px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resource-item {
+  border: 1px solid #e8e8e8;
+  border-radius: var(--radius-md, 8px);
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &.selected {
+    border-color: var(--color-primary, #1890ff);
+    background: rgba(24, 144, 255, 0.05);
+  }
+}
+
+.resource-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resource-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.resource-desc {
+  font-size: 13px;
+  color: #666;
+}
+
+.resource-capacity {
+  font-size: 12px;
+  color: #999;
+}
+
+.resource-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary, #1890ff);
+}
+
+.date-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.date-item {
+  min-width: 80px;
+  padding: 12px 8px;
+  text-align: center;
+  border: 1px solid #e8e8e8;
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &.selected {
+    border-color: var(--color-primary, #1890ff);
+    background: var(--color-primary, #1890ff);
+    color: #fff;
+  }
+}
+
+.date-text {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.loading-container {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+}
+
+.time-slot-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.time-slot-item {
+  padding: 12px 8px;
+  text-align: center;
+  border: 1px solid #e8e8e8;
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &.selected {
+    border-color: var(--color-primary, #1890ff);
+    background: var(--color-primary, #1890ff);
+    color: #fff;
+  }
+
+  &.disabled {
+    background: #f5f5f5;
+    color: #ccc;
+    cursor: not-allowed;
+  }
+}
+
+.time-text {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.time-price {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.input-group {
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.input-label {
+  display: block;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e8e8e8;
+  border-radius: var(--radius-md, 8px);
+  font-size: 14px;
+  background: #fff;
+
+  &:focus {
+    border-color: var(--color-primary, #1890ff);
+    outline: none;
+  }
+
+  &.textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+}
+
+.booking-total {
+  background: #fff;
+  margin: 12px 16px;
+  border-radius: var(--radius-md, 8px);
+  padding: 16px;
+}
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #666;
+
+  &.total-final {
+    margin-bottom: 0;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+  }
+}
+
+.total-amount {
+  color: var(--color-primary, #1890ff);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.booking-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  padding: 16px;
+  border-top: 1px solid #f0f0f0;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.submit-button {
+  width: 100%;
+  height: 48px;
+  background: var(--color-primary, #1890ff);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  font-size: 16px;
+  font-weight: 600;
+
+  &:active:not(:disabled) {
+    opacity: 0.8;
+  }
+
+  &:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+}

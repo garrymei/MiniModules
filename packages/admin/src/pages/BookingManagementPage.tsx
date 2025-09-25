@@ -13,9 +13,12 @@ import {
   DatePicker,
   Typography,
   Row,
-  Col
+  Col,
+  QRCode,
+  Divider,
+  InputNumber
 } from 'antd'
-import { SearchOutlined, EyeOutlined, CheckOutlined } from '@ant-design/icons'
+import { SearchOutlined, EyeOutlined, CheckOutlined, QrcodeOutlined, CloseOutlined } from '@ant-design/icons'
 
 const { Title, Paragraph } = Typography
 
@@ -67,6 +70,33 @@ export const BookingManagementPage = () => {
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [form] = Form.useForm()
+
+  const handleViewBooking = (booking: Booking) => {
+    setSelectedBooking(booking)
+    form.setFieldsValue(booking)
+    setIsModalVisible(true)
+  }
+
+  const handleConfirmBooking = (booking: Booking) => {
+    // 更新预约状态为已确认
+    setBookings(bookings.map(b => 
+      b.id === booking.id ? { ...b, status: 'confirmed' } : b
+    ))
+    message.success(`预约 ${booking.id} 已确认`)
+  }
+
+  const handleCheckIn = (booking: Booking) => {
+    // 更新预约状态为已入场
+    setBookings(bookings.map(b => 
+      b.id === booking.id ? { ...b, status: 'checked_in' } : b
+    ))
+    message.success(`预约 ${booking.id} 已核销`)
+  }
+
+  const handleGenerateQRCode = (booking: Booking) => {
+    setSelectedBooking(booking)
+    setIsQRCodeModalVisible(true)
+  }
 
   const statusMap: Record<string, { text: string, color: string }> = {
     pending: { text: '待确认', color: 'orange' },
@@ -137,35 +167,30 @@ export const BookingManagementPage = () => {
               确认
             </Button>
           )}
-          <Button type="link" onClick={() => handleCheckIn(record)}>
-            核销
-          </Button>
+          {['pending', 'confirmed'].includes(record.status) && (
+            <Button 
+              type="link" 
+              icon={<QrcodeOutlined />}
+              onClick={() => handleGenerateQRCode(record)}
+            >
+              二维码
+            </Button>
+          )}
+          {record.status !== 'checked_in' && record.status !== 'completed' && record.status !== 'cancelled' && (
+            <Button 
+              type="link" 
+              icon={<CheckOutlined />}
+              onClick={() => handleCheckIn(record)}
+            >
+              核销
+            </Button>
+          )}
         </Space>
       )
     }
   ]
 
-  const handleViewBooking = (booking: Booking) => {
-    setSelectedBooking(booking)
-    form.setFieldsValue(booking)
-    setIsModalVisible(true)
-  }
-
-  const handleConfirmBooking = (booking: Booking) => {
-    // 更新预约状态为已确认
-    setBookings(bookings.map(b => 
-      b.id === booking.id ? { ...b, status: 'confirmed' } : b
-    ))
-    message.success(`预约 ${booking.id} 已确认`)
-  }
-
-  const handleCheckIn = (booking: Booking) => {
-    // 更新预约状态为已入场
-    setBookings(bookings.map(b => 
-      b.id === booking.id ? { ...b, status: 'checked_in' } : b
-    ))
-    message.success(`预约 ${booking.id} 已核销`)
-  }
+  const [isQRCodeModalVisible, setIsQRCodeModalVisible] = useState(false)
 
   const handleModalOk = async () => {
     try {
@@ -301,6 +326,50 @@ export const BookingManagementPage = () => {
             <Input disabled />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="核销二维码"
+        open={isQRCodeModalVisible}
+        onCancel={() => setIsQRCodeModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setIsQRCodeModalVisible(false)}>
+            关闭
+          </Button>,
+          <Button 
+            key="checkin" 
+            type="primary" 
+            onClick={() => {
+              if (selectedBooking) {
+                handleCheckIn(selectedBooking)
+                setIsQRCodeModalVisible(false)
+              }
+            }}
+          >
+            确认核销
+          </Button>
+        ]}
+      >
+        {selectedBooking && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ marginBottom: 20 }}>
+              <p><strong>预约ID:</strong> {selectedBooking.id}</p>
+              <p><strong>客户:</strong> {selectedBooking.customer}</p>
+              <p><strong>资源:</strong> {selectedBooking.resource}</p>
+              <p><strong>预约日期:</strong> {selectedBooking.bookingDate}</p>
+              <p><strong>时段:</strong> {selectedBooking.timeSlot}</p>
+            </div>
+            <Divider />
+            <div>
+              <p>请使用扫码设备扫描下方二维码进行核销</p>
+              <QRCode 
+                value={`booking:${selectedBooking.id}`} 
+                size={200}
+                bordered={false}
+              />
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

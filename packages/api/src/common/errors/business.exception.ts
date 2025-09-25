@@ -92,4 +92,13 @@ export class BusinessException extends HttpException {
       requestId,
     );
   }
+
+  static quotaExceeded(message?: string, requestId?: string): BusinessException {
+    return new BusinessException(
+      BusinessErrorCode.TENANT_QUOTA_EXCEEDED,
+      message,
+      HttpStatus.TOO_MANY_REQUESTS,
+      requestId,
+    );
+  }
 }

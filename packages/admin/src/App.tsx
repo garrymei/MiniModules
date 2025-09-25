@@ -1,8 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import { ConfigProvider } from "antd"
-import zhCN from "antd/locale/zh_CN"
-import "dayjs/locale/zh-cn"
-
+import { I18nProvider } from "./contexts/I18nContext"
 import { AppLayout } from "./components/layout/AppLayout"
 import { LoginPage } from "./pages/LoginPage"
 import { DashboardPage } from "./pages/DashboardPage"
@@ -14,13 +11,16 @@ import { TenantsPage } from "./pages/TenantsPage"
 import { ResourcesPage } from "./pages/ResourcesPage"
 import { OrderManagementPage } from "./pages/OrderManagementPage"
 import { BookingManagementPage } from "./pages/BookingManagementPage"
+import { CMSManagementPage } from "./pages/CMSManagementPage"
 import { NotFoundPage } from "./pages/NotFoundPage"
+import { PlatformUsagePage } from "./pages/PlatformUsagePage"
+import { PlatformWebhookPage } from "./pages/PlatformWebhookPage"
 
 import { AuthProvider } from "./providers/AuthProvider"
 
 export const App = () => {
   return (
-    <ConfigProvider locale={zhCN}>
+    <I18nProvider>
       <AuthProvider>
         <Router>
           <Routes>
@@ -30,10 +30,13 @@ export const App = () => {
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="modules-catalog" element={<ModulesCatalogPage />} />
               <Route path="tenant-entitlements" element={<TenantEntitlementsPage />} />
+              <Route path="platform-usage" element={<PlatformUsagePage />} />
+              <Route path="platform-webhooks" element={<PlatformWebhookPage />} />
               <Route path="tenant-settings" element={<TenantSettingsPage />} />
               <Route path="module-config" element={<ModuleConfigPage />} />
               <Route path="tenants" element={<TenantsPage />} />
               <Route path="resources" element={<ResourcesPage />} />
+              <Route path="cms" element={<CMSManagementPage />} />
               <Route path="orders" element={<OrderManagementPage />} />
               <Route path="bookings" element={<BookingManagementPage />} />
             </Route>
@@ -41,7 +44,7 @@ export const App = () => {
           </Routes>
         </Router>
       </AuthProvider>
-    </ConfigProvider>
+    </I18nProvider>
   )
 }
 

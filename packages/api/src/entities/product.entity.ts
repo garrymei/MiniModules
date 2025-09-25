@@ -21,12 +21,14 @@ export class Product {
   @Index()
   tenantId: string;
 
+  @Index()
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Index()
   @Column({ type: 'varchar', length: 100, nullable: true })
   category: string;
 

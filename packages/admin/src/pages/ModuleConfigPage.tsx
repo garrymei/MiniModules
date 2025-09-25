@@ -12,9 +12,11 @@ import {
   Typography, 
   Space,
   Tag,
-  Divider
+  Divider,
+  Modal,
+  Alert
 } from 'antd'
-import { SaveOutlined, EyeOutlined, HistoryOutlined } from '@ant-design/icons'
+import { SaveOutlined, EyeOutlined, HistoryOutlined, PlayCircleOutlined, InfoCircleOutlined } from '@ant-design/icons'
 
 const { Title, Paragraph } = Typography
 const { TextArea } = Input
@@ -31,6 +33,7 @@ export const ModuleConfigPage = () => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('ordering')
+  const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false)
 
   const modules = [
     {
@@ -331,13 +334,41 @@ export const ModuleConfigPage = () => {
     }
   })
 
+  const handleApplyTemplate = async (values: any) => {
+    try {
+      setLoading(true)
+      // 模拟API调用
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      message.success('行业模板应用成功')
+      setIsTemplateModalVisible(false)
+      form.resetFields()
+    } catch (error) {
+      message.error('应用失败，请重试')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <Title level={3}>模块配置</Title>
-        <Paragraph type="secondary">
-          配置各业务模块的功能参数，支持草稿保存和版本发布
-        </Paragraph>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Title level={3}>模块配置</Title>
+            <Paragraph type="secondary">
+              配置各业务模块的功能参数，支持草稿保存和版本发布
+            </Paragraph>
+          </div>
+          <Space>
+            <Button 
+              type="default"
+              icon={<PlayCircleOutlined />}
+              onClick={() => setIsTemplateModalVisible(true)}
+            >
+              应用行业模板
+            </Button>
+          </Space>
+        </div>
       </div>
 
       <Tabs
@@ -346,6 +377,80 @@ export const ModuleConfigPage = () => {
         items={tabItems}
         type="card"
       />
+
+      {/* 行业模板应用模态框 */}
+      <Modal
+        title="应用行业模板"
+        open={isTemplateModalVisible}
+        onCancel={() => setIsTemplateModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <Alert
+          message="模板应用说明"
+          description={
+            <div>
+              <p>• 选择行业模板将自动配置相关模块参数</p>
+              <p>• 模板配置将与现有配置进行智能合并</p>
+              <p>• 应用后配置将保存为草稿状态</p>
+              <p>• 需要手动发布才能生效</p>
+            </div>
+          }
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+
+        <Form form={form} onFinish={handleApplyTemplate}>
+          <Form.Item
+            name="industry"
+            label="选择行业模板"
+            rules={[{ required: true, message: '请选择行业模板' }]}
+          >
+            <Select placeholder="请选择要应用的行业模板">
+              <Select.Option value="restaurant">
+                <Space>
+                  <Tag color="orange">餐饮</Tag>
+                  餐饮行业模板 - 适用于餐厅、咖啡厅等
+                </Space>
+              </Select.Option>
+              <Select.Option value="fitness">
+                <Space>
+                  <Tag color="green">健身</Tag>
+                  健身行业模板 - 适用于健身房、瑜伽馆等
+                </Space>
+              </Select.Option>
+              <Select.Option value="retail">
+                <Space>
+                  <Tag color="blue">零售</Tag>
+                  零售行业模板 - 适用于电商、零售等
+                </Space>
+              </Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="overrides"
+            label="自定义覆盖"
+          >
+            <TextArea 
+              rows={4} 
+              placeholder="可选：输入JSON格式的自定义配置，将覆盖模板默认值"
+            />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setIsTemplateModalVisible(false)}>
+                取消
+              </Button>
+              <Button type="primary" htmlType="submit" icon={<PlayCircleOutlined />} loading={loading}>
+                应用模板
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }

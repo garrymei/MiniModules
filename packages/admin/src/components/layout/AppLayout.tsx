@@ -1,4 +1,4 @@
-import { Layout, Menu, Typography, Button } from "antd"
+import { Layout, Menu, Typography, Button, Space } from "antd"
 import {
   AppstoreOutlined,
   DashboardOutlined,
@@ -9,12 +9,16 @@ import {
   KeyOutlined,
   ControlOutlined,
   ShoppingOutlined,
-  CalendarOutlined
+  CalendarOutlined,
+  FundOutlined,
+  ApiOutlined
 } from "@ant-design/icons"
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { useMemo, type FC } from "react"
 
 import { useAuth } from "../../hooks/useAuth"
+import { useI18n } from "../../contexts/I18nContext"
+import { LanguageSwitcher } from "../LanguageSwitcher"
 
 const { Header, Content, Sider } = Layout
 
@@ -38,6 +42,16 @@ const menuItems = [
         key: "tenant-entitlements",
         icon: <KeyOutlined />,
         label: <Link to="/tenant-entitlements">租户授权</Link>,
+      },
+      {
+        key: "platform-usage",
+        icon: <FundOutlined />,
+        label: <Link to="/platform-usage">用量与配额</Link>,
+      },
+      {
+        key: "platform-webhooks",
+        icon: <ApiOutlined />,
+        label: <Link to="/platform-webhooks">Webhook 管理</Link>,
       },
     ],
   },
@@ -64,7 +78,19 @@ const menuItems = [
       {
         key: "resources",
         icon: <AppstoreOutlined />,
-        label: <Link to="/resources">资源管理</Link>,
+        label: "资源管理",
+        children: [
+          {
+            key: "resources",
+            label: "资源管理",
+            path: "/resources",
+          },
+          {
+            key: "cms",
+            label: "CMS管理",
+            path: "/cms",
+          },
+        ],
       },
       {
         key: "orders",
@@ -84,6 +110,7 @@ export const AppLayout: FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { t } = useI18n()
 
   const selectedKey = useMemo(() => {
     if (location.pathname.startsWith("/modules-catalog")) {
@@ -91,6 +118,12 @@ export const AppLayout: FC = () => {
     }
     if (location.pathname.startsWith("/tenant-entitlements")) {
       return "tenant-entitlements"
+    }
+    if (location.pathname.startsWith("/platform-usage")) {
+      return "platform-usage"
+    }
+    if (location.pathname.startsWith("/platform-webhooks")) {
+      return "platform-webhooks"
     }
     if (location.pathname.startsWith("/tenants")) {
       return "tenants"
@@ -131,12 +164,13 @@ export const AppLayout: FC = () => {
           <Typography.Title level={3} style={{ margin: "12px 0" }}>
             MiniModules 管理后台
           </Typography.Title>
-          <div>
-            <span style={{ marginRight: 16 }}>欢迎，{user?.name ?? "管理员"}</span>
+          <Space>
+            <LanguageSwitcher size="small" showLabel={false} />
+            <span style={{ marginRight: 16 }}>{t('auth.welcome', { name: user?.name ?? t('common.admin') })}</span>
             <Button icon={<LogoutOutlined />} onClick={handleLogout}>
-              登出
+              {t('auth.logout')}
             </Button>
-          </div>
+          </Space>
         </Header>
         <Content style={{ margin: "24px", overflow: "initial" }}>
           <div style={{ padding: 24, background: "#fff", minHeight: 360 }}>

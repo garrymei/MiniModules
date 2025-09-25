@@ -9,10 +9,13 @@ import {
 import { Request, Response } from 'express';
 import { BusinessException } from '../errors/business.exception';
 import { BusinessErrorCode } from '../errors/business-codes.enum';
+import { I18nService } from '../i18n/i18n.service';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
+
+  constructor(private readonly i18nService: I18nService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -23,6 +26,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const timestamp = new Date().toISOString();
     const path = request.url;
     const method = request.method;
+    const locale = (request as any).locale || 'zh-CN';
 
     let status: HttpStatus;
     let errorResponse: any;
@@ -68,7 +72,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       errorResponse = {
         code: BusinessErrorCode.UNKNOWN_ERROR,
-        message: 'Internal server error',
+        message: this.i18nService.getMessage('common.serverError', locale),
         requestId,
         timestamp,
         path,

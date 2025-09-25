@@ -1,18 +1,42 @@
 import { Controller, Get, Put, Post, Delete, Param, Body, Query } from '@nestjs/common';
 import { PlatformService, TenantEntitlementDto } from './platform.service';
 import { TenantEntitlement } from '../../entities/tenant-entitlement.entity';
+import { UsageService } from '../usage/usage.service';
+import { UsageMetric, UsagePeriod } from '../../entities/usage-counter.entity';
+import { ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 @Controller('platform/tenants')
 export class PlatformController {
-  constructor(private readonly platformService: PlatformService) {}
+  constructor(
+    private readonly platformService: PlatformService,
+    private readonly usageService: UsageService,
+  ) {}
 
   @Get(':id/entitlements')
+  @ApiOperation({ summary: '获取租户授权模块' })
   async getTenantEntitlements(@Param('id') tenantId: string): Promise<{ success: boolean; data: TenantEntitlement[] }> {
     const entitlements = await this.platformService.getTenantEntitlements(tenantId);
     return {
       success: true,
       data: entitlements,
     };
+  }
+
+  @Get(':id/usage')
+  @ApiOperation({ summary: '获取租户用量统计' })
+  @ApiParam({ name: 'id', description: '租户ID' })
+  @ApiQuery({ name: 'metric', required: false, enum: UsageMetric, description: '指标类型' })
+  @ApiQuery({ name: 'period', required: false, enum: UsagePeriod, description: '统计周期' })
+  @ApiQuery({ name: 'startDate', required: false, description: '开始日期 (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', required: false, description: '结束日期 (YYYY-MM-DD)' })
+  async getTenantUsage(
+    @Param('id') tenantId: string,
+    @Query('metric') metric?: UsageMetric,
+    @Query('period') period?: UsagePeriod,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.usageService.getTenantUsage(tenantId, metric, period, startDate, endDate);
   }
 
   @Put(':id/entitlements')

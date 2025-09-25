@@ -1,0 +1,81 @@
+.content-list {
+  width: 100%;
+
+  &--loading,
+  &--empty {
+    padding: 16px;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 16px 8px;
+    margin-bottom: 8px;
+  }
+
+  &__title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  &__category {
+    font-size: 14px;
+    color: var(--color-primary, #1890ff);
+    background: rgba(24, 144, 255, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  &__container {
+    &--grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding: 0 16px;
+    }
+
+    &--list {
+      padding: 0 16px;
+    }
+  }
+
+  &__loading,
+  &__empty {
+    text-align: center;
+    padding: 40px 16px;
+  }
+
+  &__loading-text,
+  &__empty-text {
+    color: #999;
+    font-size: 14px;
+  }
+
+  &__load-more {
+    text-align: center;
+    padding: 16px;
+    margin-top: 8px;
+  }
+
+  &__load-more-text {
+    color: var(--color-primary, #1890ff);
+    font-size: 14px;
+    cursor: pointer;
+  }
+}
+
+// 响应式设计
+@media (max-width: 375px) {
+  .content-list__container--grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+@media (min-width: 414px) {
+  .content-list__container--grid {
+    gap: 16px;
+  }
+}

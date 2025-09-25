@@ -23,6 +23,7 @@ export class Resource {
   @Index()
   tenantId: string;
 
+  @Index()
   @Column({ type: 'varchar', length: 255 })
   name: string;
 

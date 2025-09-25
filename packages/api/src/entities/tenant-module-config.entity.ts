@@ -15,8 +15,28 @@ export class TenantModuleConfig {
   @Column({ type: 'int', default: 1 })
   version!: number;
 
-  @Column({ type: 'varchar', length: 50, default: 'draft' })
-  status!: 'draft' | 'published';
+  @Column({ 
+    type: 'varchar', 
+    length: 50, 
+    default: 'draft',
+    comment: 'draft, submitted, approved, published, rejected'
+  })
+  status!: 'draft' | 'submitted' | 'approved' | 'published' | 'rejected';
+
+  @Column({ type: 'uuid', nullable: true })
+  approvedBy?: string;
+
+  @Column({ type: 'text', nullable: true })
+  reviewNote?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  submittedAt?: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  approvedAt?: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  publishedAt?: Date;
 
   @CreateDateColumn()
   createdAt!: Date;

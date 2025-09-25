@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Booking, BookingStatus } from '../../entities/booking.entity';
+import { UsageService } from '../usage/usage.service';
+import { UsageMetric } from '../../entities/usage-counter.entity';
+import { NotifyService } from '../notify/notify.service';
 
 export interface CreateBookingDto {
   tenantId: string;
@@ -20,14 +23,31 @@ export interface UpdateBookingDto {
 
 @Injectable()
 export class BookingService {
+  private readonly logger = new Logger(BookingService.name);
+
   constructor(
     @InjectRepository(Booking)
     private bookingRepository: Repository<Booking>,
+    private readonly usageService: UsageService,
+    private readonly notifyService: NotifyService,
   ) {}
 
   async createBooking(createBookingDto: CreateBookingDto): Promise<Booking> {
+    await this.usageService.enforceQuota(createBookingDto.tenantId, UsageMetric.BOOKINGS);
+
     const booking = this.bookingRepository.create(createBookingDto);
-    return this.bookingRepository.save(booking);
+    const saved = await this.bookingRepository.save(booking);
+
+    await this.usageService.incrementUsage(createBookingDto.tenantId, UsageMetric.BOOKINGS, 1, {
+      bookingId: saved.id,
+      bookingDate: saved.bookingDate,
+    });
+
+    this.dispatchBookingCreated(saved).catch((error) => {
+      this.logger.warn(`Failed to dispatch booking created notification`, error instanceof Error ? error.message : error);
+    });
+
+    return saved;
   }
 
   async getBookingsByTenant(tenantId: string, limit = 20, offset = 0): Promise<Booking[]> {
@@ -70,5 +90,31 @@ export class BookingService {
   async deleteBooking(id: string): Promise<void> {
     const booking = await this.getBookingById(id);
     await this.bookingRepository.remove(booking);
+  }
+
+  private async dispatchBookingCreated(booking: Booking) {
+    await this.notifyService.sendTemplateMessage({
+      tenantId: booking.tenantId,
+      templateKey: 'booking_created',
+      toUser: booking.userId,
+      data: {
+        bookingId: booking.id,
+        bookingDate: booking.bookingDate,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        peopleCount: booking.peopleCount,
+        status: booking.status,
+      },
+    });
+
+    await this.notifyService.triggerEvent(booking.tenantId, 'booking.created', {
+      bookingId: booking.id,
+      bookingDate: booking.bookingDate,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      peopleCount: booking.peopleCount,
+      status: booking.status,
+      createdAt: booking.createdAt,
+    });
   }
 }

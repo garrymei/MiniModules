@@ -1,0 +1,48 @@
+.language-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &--small {
+    font-size: 12px;
+  }
+
+  &--normal {
+    font-size: 14px;
+  }
+
+  &--large {
+    font-size: 16px;
+  }
+
+  &__label {
+    color: #666;
+    font-size: inherit;
+  }
+
+  &__picker {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:active {
+      background: #e0e0e0;
+    }
+  }
+
+  &__flag {
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  &__text {
+    color: #333;
+    font-size: inherit;
+    line-height: 1;
+  }
+}

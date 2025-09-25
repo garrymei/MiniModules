@@ -40,40 +40,32 @@ export class UsageService {
     tenantId: string,
     metric: UsageMetric,
     amount: number = 1,
-    metadata?: any
+    metadata?: Record<string, any>,
   ): Promise<UsageCounter> {
     const periodDate = this.getCurrentPeriodDate();
-    const period = UsagePeriod.DAILY; // 默认按日统计
+    const period = UsagePeriod.DAILY;
 
-    // 查找现有记录
-    let counter = await this.usageCounterRepository.findOne({
-      where: {
-        tenantId,
-        metric,
-        period,
-        periodDate,
-      },
-    });
+    const payload = metadata ? JSON.stringify(metadata) : null;
 
-    if (counter) {
-      // 更新现有记录
-      counter.value += amount;
-      if (metadata) {
-        counter.metadata = { ...counter.metadata, ...metadata };
-      }
-    } else {
-      // 创建新记录
-      counter = this.usageCounterRepository.create({
-        tenantId,
-        metric,
-        period,
-        periodDate,
-        value: amount,
-        metadata,
-      });
-    }
+    const [counter] = await this.usageCounterRepository.query(
+      `
+        INSERT INTO "usage_counters" ("tenantId", "metric", "period", "periodDate", "value", "metadata")
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        ON CONFLICT ("tenantId", "metric", "period", "periodDate")
+        DO UPDATE SET
+          "value" = "usage_counters"."value" + EXCLUDED."value",
+          "metadata" = CASE
+            WHEN "usage_counters"."metadata" IS NULL THEN EXCLUDED."metadata"
+            WHEN EXCLUDED."metadata" IS NULL THEN "usage_counters"."metadata"
+            ELSE "usage_counters"."metadata" || EXCLUDED."metadata"
+          END,
+          "updatedAt" = CURRENT_TIMESTAMP
+        RETURNING *;
+      `,
+      [tenantId, metric, period, periodDate, amount, payload],
+    );
 
-    return this.usageCounterRepository.save(counter);
+    return counter;
   }
 
   /**
@@ -153,8 +145,17 @@ export class UsageService {
     metric: UsageMetric,
     amount: number = 1
   ): Promise<QuotaCheckResult> {
-    const currentStats = await this.getTenantUsage(tenantId, metric, UsagePeriod.DAILY);
-    const current = currentStats.length > 0 ? currentStats[0].current : 0;
+    const periodDate = this.getCurrentPeriodDate();
+    const existing = await this.usageCounterRepository.findOne({
+      where: {
+        tenantId,
+        metric,
+        period: UsagePeriod.DAILY,
+        periodDate,
+      },
+    });
+
+    const current = existing?.value ?? 0;
     
     const quota = await this.tenantQuotaRepository.findOne({
       where: {
@@ -190,13 +191,27 @@ export class UsageService {
       }
     }
 
-    return {
+    const result: QuotaCheckResult = {
       allowed,
       current,
       limit: quota.limit,
       type: quota.type,
       message,
     };
+
+    return result;
+  }
+
+  async enforceQuota(
+    tenantId: string,
+    metric: UsageMetric,
+    amount: number = 1,
+  ): Promise<QuotaCheckResult> {
+    const result = await this.checkQuota(tenantId, metric, amount);
+    if (!result.allowed) {
+      throw BusinessException.quotaExceeded(result.message);
+    }
+    return result;
   }
 
   /**

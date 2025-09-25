@@ -4,6 +4,10 @@ import Taro from "@tarojs/taro"
 
 import useTenantConfigStore from "../../store/config"
 import { getStoredTenantId } from "../../services/config"
+import { BannerCarousel } from "../../components/cms/BannerCarousel"
+import { ContentList } from "../../components/cms/ContentList"
+import { useI18n } from "../../hooks/useI18n"
+import { LanguageSwitcher } from "../../components/LanguageSwitcher"
 
 import "./index.scss"
 
@@ -24,6 +28,7 @@ const IndexPage: React.FC = () => {
     error: state.error,
     loadConfig: state.loadConfig,
   }))
+  const { t } = useI18n()
 
   useEffect(() => {
     if (!config) {
@@ -44,24 +49,36 @@ const IndexPage: React.FC = () => {
   )
 
   const enabledModules: string[] = config?.enabledModules || []
+  const tenantId = getStoredTenantId()
 
   return (
     <View className="index-page">
       <View className="index-header">
-        <Text className="index-title">MiniModules</Text>
+        <Text className="index-title">{config?.theme?.name || 'MiniModules'}</Text>
         {config ? (
           <Text className="index-subtitle">Tenant: {config.tenantId}</Text>
         ) : null}
+        <LanguageSwitcher size="small" showLabel={false} />
       </View>
 
-      {isLoading ? <Text className="index-status">Loading tenant configuration...</Text> : null}
+      <View className="index-search" onClick={() => Taro.navigateTo({ url: '/pages/search/index' })}>
+        <Text className="index-search__placeholder">搜索商品、场地或资讯</Text>
+      </View>
+
+      {isLoading ? <Text className="index-status">{t('common.loading')}</Text> : null}
       {error ? <Text className="index-status index-status__error">{error}</Text> : null}
 
+      {/* Banner轮播 */}
+      {config && enabledModules.includes('cms') && (
+        <BannerCarousel tenantId={tenantId} />
+      )}
+
+      {/* 模块网格 */}
       <View className="module-grid">
         {enabledModules.length === 0 && !isLoading ? (
-          <Text className="index-status">No modules enabled</Text>
+          <Text className="index-status">{t('messages.noData')}</Text>
         ) : (
-          enabledModules.map((moduleId: string) => {
+          enabledModules.filter(module => module !== 'cms').map((moduleId: string) => {
             const copy = getModuleCopy(moduleId)
             return (
               <View
@@ -76,6 +93,17 @@ const IndexPage: React.FC = () => {
           })
         )}
       </View>
+
+      {/* CMS内容列表 */}
+      {config && enabledModules.includes('cms') && (
+        <ContentList 
+          tenantId={tenantId}
+          layout="grid"
+          limit={6}
+          showHeader={true}
+          title={t('cms.news')}
+        />
+      )}
     </View>
   )
 }

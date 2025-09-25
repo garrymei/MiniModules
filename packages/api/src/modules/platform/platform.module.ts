@@ -5,9 +5,10 @@ import { PlatformController } from './platform.controller';
 import { PlatformService } from './platform.service';
 import { ModuleSpecService } from './module-spec.service';
 import { ModuleDependencyService } from './module-dependency.service';
+import { UsageModule } from '../usage/usage.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TenantEntitlement])],
+  imports: [TypeOrmModule.forFeature([TenantEntitlement]), UsageModule],
   controllers: [PlatformController],
   providers: [PlatformService, ModuleSpecService, ModuleDependencyService],
   exports: [PlatformService, ModuleSpecService, ModuleDependencyService],

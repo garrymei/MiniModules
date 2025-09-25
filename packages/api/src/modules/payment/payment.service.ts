@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order, OrderStatus } from '../../entities/order.entity';
 import { Booking, BookingStatus } from '../../entities/booking.entity';
+import { NotifyService } from '../notify/notify.service';
 
 export interface CreatePaymentDto {
   orderId?: string;
@@ -31,11 +32,14 @@ export interface PaymentNotifyDto {
 
 @Injectable()
 export class PaymentService {
+  private readonly logger = new Logger(PaymentService.name);
+
   constructor(
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
     @InjectRepository(Booking)
     private bookingRepository: Repository<Booking>,
+    private readonly notifyService: NotifyService,
   ) {}
 
   async createPayment(createPaymentDto: CreatePaymentDto): Promise<PaymentResult> {
@@ -86,38 +90,72 @@ export class PaymentService {
     const { orderId, status, amount } = notifyDto;
 
     try {
-      // 查找订单
       const order = await this.orderRepository.findOne({ where: { id: orderId } });
       if (order) {
         if (status === 'success') {
           order.status = OrderStatus.CONFIRMED;
-          await this.orderRepository.save(order);
+          const updatedOrder = await this.orderRepository.save(order);
+          this.dispatchPaymentSuccess('order', updatedOrder.tenantId, {
+            orderId: updatedOrder.id,
+            orderNumber: updatedOrder.orderNumber,
+            amount,
+            status: updatedOrder.status,
+          }).catch((error) =>
+            this.logger.warn('Order payment notify failed', error instanceof Error ? error.message : error),
+          );
           return { success: true, message: 'Order payment processed successfully' };
-        } else {
-          order.status = OrderStatus.CANCELLED;
-          await this.orderRepository.save(order);
-          return { success: true, message: 'Order payment failed' };
         }
+
+        order.status = OrderStatus.CANCELLED;
+        await this.orderRepository.save(order);
+        return { success: true, message: 'Order payment failed' };
       }
 
-      // 查找预约
       const booking = await this.bookingRepository.findOne({ where: { id: orderId } });
       if (booking) {
         if (status === 'success') {
           booking.status = BookingStatus.CONFIRMED;
-          await this.bookingRepository.save(booking);
+          const updatedBooking = await this.bookingRepository.save(booking);
+          this.dispatchPaymentSuccess('booking', updatedBooking.tenantId, {
+            bookingId: updatedBooking.id,
+            bookingDate: updatedBooking.bookingDate,
+            amount,
+            status: updatedBooking.status,
+          }).catch((error) =>
+            this.logger.warn('Booking payment notify failed', error instanceof Error ? error.message : error),
+          );
           return { success: true, message: 'Booking payment processed successfully' };
-        } else {
-          booking.status = BookingStatus.CANCELLED;
-          await this.bookingRepository.save(booking);
-          return { success: true, message: 'Booking payment failed' };
         }
+
+        booking.status = BookingStatus.CANCELLED;
+        await this.bookingRepository.save(booking);
+        return { success: true, message: 'Booking payment failed' };
       }
 
       throw new NotFoundException(`Order or booking with ID ${orderId} not found`);
     } catch (error) {
-      return { success: false, message: error.message };
+      return { success: false, message: (error as Error).message };
     }
+  }
+
+  private async dispatchPaymentSuccess(
+    entityType: 'order' | 'booking',
+    tenantId: string,
+    payload: Record<string, any>,
+  ) {
+    await this.notifyService.sendTemplateMessage({
+      tenantId,
+      templateKey: 'payment_success',
+      data: {
+        ...payload,
+        entityType,
+      },
+    });
+
+    await this.notifyService.triggerEvent(tenantId, 'payment.success', {
+      entityType,
+      ...payload,
+    });
   }
 
   private generatePaySign(prepayId: string, nonceStr: string, timeStamp: string): string {
