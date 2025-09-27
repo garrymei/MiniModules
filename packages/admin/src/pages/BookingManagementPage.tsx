@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { 
   Card, 
   Table, 
@@ -14,236 +15,216 @@ import {
   Typography,
   Row,
   Col,
-  QRCode,
-  Divider,
-  InputNumber
-} from 'antd'
-import { SearchOutlined, EyeOutlined, CheckOutlined, QrcodeOutlined, CloseOutlined } from '@ant-design/icons'
+  InputNumber,
+  Dropdown,
+  Menu,
+  notification
+} from 'antd';
+import { SearchOutlined, EyeOutlined, ReloadOutlined, DownloadOutlined, ExportOutlined } from '@ant-design/icons';
+import { apiClient } from '../services/apiClient';
 
-const { Title, Paragraph } = Typography
+const { Title, Paragraph } = Typography;
 
+// This interface should ideally be imported from a shared types package
 interface Booking {
-  id: string
-  customer: string
-  resource: string
-  bookingDate: string
-  timeSlot: string
-  peopleCount: number
-  status: 'pending' | 'confirmed' | 'checked_in' | 'cancelled' | 'completed'
-  createdAt: string
+  id: string;
+  resourceId: string;
+  resourceName: string;
+  date: string;
+  timeSlot: string;
+  customerName: string;
+  customerPhone: string;
+  status: 'pending' | 'confirmed' | 'checked_in' | 'cancelled' | 'completed';
+  totalAmount: number;
+  createdAt: string;
+}
+
+interface ExportJob {
+  id: string;
+  type: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  fileName: string;
+  fileUrl?: string;
+  createdAt: string;
+  recordCount?: number;
 }
 
 export const BookingManagementPage = () => {
-  const [bookings, setBookings] = useState<Booking[]>([
-    {
-      id: '1',
-      customer: '张三',
-      resource: '大厅A区',
-      bookingDate: '2024-01-10',
-      timeSlot: '18:00-19:00',
-      peopleCount: 4,
-      status: 'confirmed',
-      createdAt: '2024-01-01 10:30:00'
-    },
-    {
-      id: '2',
-      customer: '李四',
-      resource: '包间B',
-      bookingDate: '2024-01-10',
-      timeSlot: '19:00-20:00',
-      peopleCount: 6,
-      status: 'pending',
-      createdAt: '2024-01-01 14:20:00'
-    },
-    {
-      id: '3',
-      customer: '王五',
-      resource: '大厅A区',
-      bookingDate: '2024-01-11',
-      timeSlot: '12:00-13:00',
-      peopleCount: 2,
-      status: 'checked_in',
-      createdAt: '2024-01-02 09:15:00'
-    }
-  ])
-
-  const [isModalVisible, setIsModalVisible] = useState(false)
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
-  const [form] = Form.useForm()
-
-  const handleViewBooking = (booking: Booking) => {
-    setSelectedBooking(booking)
-    form.setFieldsValue(booking)
-    setIsModalVisible(true)
-  }
-
-  const handleConfirmBooking = (booking: Booking) => {
-    // 更新预约状态为已确认
-    setBookings(bookings.map(b => 
-      b.id === booking.id ? { ...b, status: 'confirmed' } : b
-    ))
-    message.success(`预约 ${booking.id} 已确认`)
-  }
-
-  const handleCheckIn = (booking: Booking) => {
-    // 更新预约状态为已入场
-    setBookings(bookings.map(b => 
-      b.id === booking.id ? { ...b, status: 'checked_in' } : b
-    ))
-    message.success(`预约 ${booking.id} 已核销`)
-  }
-
-  const handleGenerateQRCode = (booking: Booking) => {
-    setSelectedBooking(booking)
-    setIsQRCodeModalVisible(true)
-  }
+  const { tenantId } = useParams<{ tenantId: string }>();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [exportJobs, setExportJobs] = useState<ExportJob[]>([]);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [form] = Form.useForm();
 
   const statusMap: Record<string, { text: string, color: string }> = {
     pending: { text: '待确认', color: 'orange' },
     confirmed: { text: '已确认', color: 'blue' },
-    checked_in: { text: '已入场', color: 'green' },
+    checked_in: { text: '已核销', color: 'purple' },
     cancelled: { text: '已取消', color: 'red' },
-    completed: { text: '已完成', color: 'purple' }
-  }
+    completed: { text: '已完成', color: 'green' },
+  };
+
+  const loadBookings = async () => {
+    if (!tenantId) return;
+    try {
+      setLoading(true);
+      const response = await apiClient.get(`/booking?tenantId=${tenantId}`);
+      setBookings(response.data || []);
+    } catch (error) {
+      message.error('加载预约列表失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadExportJobs = async () => {
+    if (!tenantId) return;
+    try {
+      const response = await apiClient.get(`/export/jobs?tenantId=${tenantId}`);
+      setExportJobs(response.data?.jobs || []);
+    } catch (error) {
+      console.error('加载导出任务失败:', error);
+    }
+  };
+
+  const handleExportBookings = async () => {
+    if (!tenantId) return;
+    
+    try {
+      setExportLoading(true);
+      const response = await apiClient.post('/export/job', {
+        tenantId,
+        type: 'bookings',
+        format: 'csv',
+        filters: {} // 可以添加筛选条件
+      });
+      
+      if (response.data) {
+        message.success('导出任务已创建');
+        // 开始轮询任务状态
+        pollExportJob(response.data.id);
+      }
+    } catch (error) {
+      message.error('创建导出任务失败');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const pollExportJob = (jobId: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await apiClient.get(`/export/job/${jobId}`);
+        const job = response.data;
+        
+        if (job.status === 'completed') {
+          clearInterval(interval);
+          notification.success({
+            message: '导出完成',
+            description: (
+              <div>
+                <p>预约导出已完成</p>
+                <Button 
+                  type="primary" 
+                  size="small" 
+                  icon={<DownloadOutlined />}
+                  onClick={() => window.open(job.fileUrl, '_blank')}
+                >
+                  下载文件
+                </Button>
+              </div>
+            ),
+            duration: 0
+          });
+        } else if (job.status === 'failed' || job.status === 'cancelled') {
+          clearInterval(interval);
+          notification.error({
+            message: '导出失败',
+            description: job.errorMessage || '导出任务执行失败',
+            duration: 0
+          });
+        }
+      } catch (error) {
+        console.error('轮询导出任务状态失败:', error);
+        clearInterval(interval);
+      }
+    }, 3000); // 每3秒轮询一次
+  };
+
+  useEffect(() => {
+    loadBookings();
+    loadExportJobs();
+  }, [tenantId]);
 
   const columns = [
-    {
-      title: '客户',
-      dataIndex: 'customer',
-      key: 'customer'
-    },
-    {
-      title: '资源',
-      dataIndex: 'resource',
-      key: 'resource'
-    },
-    {
-      title: '预约日期',
-      dataIndex: 'bookingDate',
-      key: 'bookingDate'
-    },
-    {
-      title: '时段',
-      dataIndex: 'timeSlot',
-      key: 'timeSlot'
-    },
-    {
-      title: '人数',
-      dataIndex: 'peopleCount',
-      key: 'peopleCount'
-    },
+    { title: '资源', dataIndex: 'resourceName', key: 'resourceName' },
+    { title: '日期', dataIndex: 'date', key: 'date' },
+    { title: '时段', dataIndex: 'timeSlot', key: 'timeSlot' },
+    { title: '客户', dataIndex: 'customerName', key: 'customerName' },
+    { title: '电话', dataIndex: 'customerPhone', key: 'customerPhone' },
+    { title: '金额', dataIndex: 'totalAmount', key: 'totalAmount', render: (amount: number) => `¥${amount.toFixed(2)}` },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => {
-        const statusInfo = statusMap[status] || { text: status, color: 'default' }
-        return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>
-      }
+      render: (status: string) => <Tag color={statusMap[status]?.color}>{statusMap[status]?.text || status}</Tag>
     },
-    {
-      title: '预约时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt'
-    },
+    { title: '预约时间', dataIndex: 'createdAt', key: 'createdAt', render: (date: string) => new Date(date).toLocaleString() },
     {
       title: '操作',
       key: 'actions',
       render: (_: any, record: Booking) => (
         <Space size="middle">
-          <Button 
-            type="link" 
-            icon={<EyeOutlined />}
-            onClick={() => handleViewBooking(record)}
-          >
-            查看
-          </Button>
-          {record.status === 'pending' && (
-            <Button 
-              type="link" 
-              icon={<CheckOutlined />}
-              onClick={() => handleConfirmBooking(record)}
-            >
-              确认
-            </Button>
-          )}
-          {['pending', 'confirmed'].includes(record.status) && (
-            <Button 
-              type="link" 
-              icon={<QrcodeOutlined />}
-              onClick={() => handleGenerateQRCode(record)}
-            >
-              二维码
-            </Button>
-          )}
-          {record.status !== 'checked_in' && record.status !== 'completed' && record.status !== 'cancelled' && (
-            <Button 
-              type="link" 
-              icon={<CheckOutlined />}
-              onClick={() => handleCheckIn(record)}
-            >
-              核销
-            </Button>
-          )}
+          <Button type="link" icon={<EyeOutlined />} onClick={() => handleViewBooking(record)}>查看</Button>
         </Space>
-      )
-    }
-  ]
+      ),
+    },
+  ];
 
-  const [isQRCodeModalVisible, setIsQRCodeModalVisible] = useState(false)
-
-  const handleModalOk = async () => {
-    try {
-      const values = await form.validateFields()
-      
-      // 更新预约信息
-      setBookings(bookings.map(booking => 
-        booking.id === selectedBooking?.id ? { ...booking, ...values } : booking
-      ))
-      
-      message.success('预约更新成功')
-      setIsModalVisible(false)
-      form.resetFields()
-      setSelectedBooking(null)
-    } catch (error) {
-      console.error('验证失败:', error)
-    }
-  }
+  const handleViewBooking = (booking: Booking) => {
+    setSelectedBooking(booking);
+    form.setFieldsValue(booking);
+    setIsModalVisible(true);
+  };
 
   const handleModalCancel = () => {
-    setIsModalVisible(false)
-    form.resetFields()
-    setSelectedBooking(null)
-  }
+    setIsModalVisible(false);
+    setSelectedBooking(null);
+  };
+
+  const exportMenu = (
+    <Menu>
+      <Menu.Item key="export-bookings" onClick={handleExportBookings} icon={<ExportOutlined />}>
+        导出预约
+      </Menu.Item>
+      {/* 可以添加更多导出选项 */}
+    </Menu>
+  );
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <Title level={3}>预约管理</Title>
-        <Paragraph type="secondary">
-          管理所有预约，包括查看、确认、核销等操作
-        </Paragraph>
-      </div>
-
+      <Title level={3}>预约管理</Title>
+      <Paragraph type="secondary">管理所有预约，包括查看、更新状态等操作</Paragraph>
       <Card>
         <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={6}><Input placeholder="资源名称" prefix={<SearchOutlined />} /></Col>
+          <Col span={6}><Input placeholder="客户姓名" prefix={<SearchOutlined />} /></Col>
+          <Col span={6}><Select placeholder="预约状态" style={{ width: '100%' }} allowClear>{Object.entries(statusMap).map(([key, val]) => <Select.Option key={key} value={key}>{val.text}</Select.Option>)}</Select></Col>
           <Col span={6}>
-            <Input placeholder="客户姓名" prefix={<SearchOutlined />} />
-          </Col>
-          <Col span={6}>
-            <Input placeholder="资源名称" prefix={<SearchOutlined />} />
-          </Col>
-          <Col span={6}>
-            <Select placeholder="预约状态" style={{ width: '100%' }}>
-              <Select.Option value="pending">待确认</Select.Option>
-              <Select.Option value="confirmed">已确认</Select.Option>
-              <Select.Option value="checked_in">已入场</Select.Option>
-              <Select.Option value="cancelled">已取消</Select.Option>
-              <Select.Option value="completed">已完成</Select.Option>
-            </Select>
-          </Col>
-          <Col span={6}>
-            <DatePicker placeholder="预约日期" style={{ width: '100%' }} />
+            <Space>
+              <Button icon={<ReloadOutlined />} onClick={loadBookings} loading={loading}>刷新</Button>
+              <Dropdown overlay={exportMenu} trigger={['click']}>
+                <Button 
+                  icon={<ExportOutlined />} 
+                  loading={exportLoading}
+                >
+                  导出
+                </Button>
+              </Dropdown>
+            </Space>
           </Col>
         </Row>
 
@@ -251,126 +232,23 @@ export const BookingManagementPage = () => {
           dataSource={bookings}
           columns={columns}
           rowKey="id"
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 个预约`
-          }}
+          loading={loading}
+          pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 个预约` }}
         />
       </Card>
 
-      <Modal
-        title="预约详情"
-        open={isModalVisible}
-        onOk={handleModalOk}
-        onCancel={handleModalCancel}
-        width={600}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-        >
-          <Form.Item
-            name="customer"
-            label="客户"
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="resource"
-            label="资源"
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="bookingDate"
-            label="预约日期"
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="timeSlot"
-            label="时段"
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="peopleCount"
-            label="人数"
-          >
-            <Input type="number" />
-          </Form.Item>
-
-          <Form.Item
-            name="status"
-            label="预约状态"
-          >
-            <Select>
-              <Select.Option value="pending">待确认</Select.Option>
-              <Select.Option value="confirmed">已确认</Select.Option>
-              <Select.Option value="checked_in">已入场</Select.Option>
-              <Select.Option value="cancelled">已取消</Select.Option>
-              <Select.Option value="completed">已完成</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="createdAt"
-            label="预约时间"
-          >
-            <Input disabled />
-          </Form.Item>
+      <Modal title="预约详情" open={isModalVisible} onCancel={handleModalCancel} footer={[<Button key="back" onClick={handleModalCancel}>关闭</Button>]}>
+        <Form form={form} layout="vertical">
+          <Form.Item name="resourceName" label="资源"><Input disabled /></Form.Item>
+          <Form.Item name="date" label="日期"><Input disabled /></Form.Item>
+          <Form.Item name="timeSlot" label="时段"><Input disabled /></Form.Item>
+          <Form.Item name="customerName" label="客户姓名"><Input disabled /></Form.Item>
+          <Form.Item name="customerPhone" label="客户电话"><Input disabled /></Form.Item>
+          <Form.Item name="totalAmount" label="预约金额"><InputNumber style={{ width: '100%' }} formatter={v => `¥ ${v}`} disabled /></Form.Item>
+          <Form.Item name="status" label="预约状态"><Select disabled>{Object.entries(statusMap).map(([key, val]) => <Select.Option key={key} value={key}>{val.text}</Select.Option>)}</Select></Form.Item>
+          <Form.Item name="createdAt" label="预约时间"><Input disabled /></Form.Item>
         </Form>
       </Modal>
-
-      <Modal
-        title="核销二维码"
-        open={isQRCodeModalVisible}
-        onCancel={() => setIsQRCodeModalVisible(false)}
-        footer={[
-          <Button key="close" onClick={() => setIsQRCodeModalVisible(false)}>
-            关闭
-          </Button>,
-          <Button 
-            key="checkin" 
-            type="primary" 
-            onClick={() => {
-              if (selectedBooking) {
-                handleCheckIn(selectedBooking)
-                setIsQRCodeModalVisible(false)
-              }
-            }}
-          >
-            确认核销
-          </Button>
-        ]}
-      >
-        {selectedBooking && (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ marginBottom: 20 }}>
-              <p><strong>预约ID:</strong> {selectedBooking.id}</p>
-              <p><strong>客户:</strong> {selectedBooking.customer}</p>
-              <p><strong>资源:</strong> {selectedBooking.resource}</p>
-              <p><strong>预约日期:</strong> {selectedBooking.bookingDate}</p>
-              <p><strong>时段:</strong> {selectedBooking.timeSlot}</p>
-            </div>
-            <Divider />
-            <div>
-              <p>请使用扫码设备扫描下方二维码进行核销</p>
-              <QRCode 
-                value={`booking:${selectedBooking.id}`} 
-                size={200}
-                bordered={false}
-              />
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
-  )
-}
+  );
+};

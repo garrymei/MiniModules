@@ -20,7 +20,11 @@
     "types": [
       "@types/wechat-miniprogram",
       "miniprogram-api-typings"
-    ]
+    ],
+    "baseUrl": "./src",
+    "paths": {
+      "@minimodules/libs/*": ["../../libs/src/*"]
+    }
   },
   "include": [
     "src/**/*"

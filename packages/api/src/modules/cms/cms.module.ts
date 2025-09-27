@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CMSController } from './cms.controller';
 import { CMSService } from './cms.service';
+import { CmsController } from './controllers/cms.controller';
+import { CmsService } from './services/cms.service';
 import { CMSBannerController, PublicCMSBannerController } from './controllers/cms-banner.controller';
 import { CMSArticleController, PublicCMSArticleController } from './controllers/cms-article.controller';
 import { CMSBannerService } from './services/cms-banner.service';
@@ -14,12 +16,13 @@ import { CMSArticle } from '../../entities/cms-article.entity';
   imports: [TypeOrmModule.forFeature([CMSContent, CMSBanner, CMSArticle])],
   controllers: [
     CMSController,
+    CmsController,
     CMSBannerController,
     PublicCMSBannerController,
     CMSArticleController,
     PublicCMSArticleController,
   ],
-  providers: [CMSService, CMSBannerService, CMSArticleService],
-  exports: [CMSService, CMSBannerService, CMSArticleService],
+  providers: [CMSService, CmsService, CMSBannerService, CMSArticleService],
+  exports: [CMSService, CmsService, CMSBannerService, CMSArticleService],
 })
 export class CMSModule {}

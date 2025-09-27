@@ -1,0 +1,380 @@
+.image-upload-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.upload-area {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #fafafa;
+  margin-bottom: 20px;
+
+  &:hover {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+  }
+
+  &.drag-over {
+    border-color: #007bff;
+    background-color: #e6f3ff;
+    transform: scale(1.02);
+  }
+
+  &.uploading {
+    border-color: #28a745;
+    background-color: #f0fff4;
+    cursor: not-allowed;
+  }
+}
+
+.upload-content {
+  .upload-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .upload-text {
+    font-size: 18px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 8px;
+  }
+
+  .upload-hint {
+    font-size: 14px;
+    color: #666;
+    margin: 4px 0;
+  }
+}
+
+.upload-progress {
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+
+    .progress-fill {
+      height: 100%;
+      background-color: #28a745;
+      transition: width 0.3s ease;
+    }
+  }
+
+  .progress-text {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+  }
+}
+
+.file-list {
+  margin-bottom: 20px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background-color: #fff;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #007bff;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+  }
+}
+
+.file-preview {
+  width: 60px;
+  height: 60px;
+  margin-right: 12px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #f8f9fa;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+
+  .file-name {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .file-size {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+  }
+}
+
+.compression-info {
+  .compression-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 4px;
+
+    span {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background-color: #f8f9fa;
+      color: #666;
+    }
+
+    .compression-ratio {
+      &.good {
+        background-color: #d4edda;
+        color: #155724;
+      }
+    }
+  }
+
+  .compression-suggestion {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    color: #856404;
+    background-color: #fff3cd;
+    padding: 4px 8px;
+    border-radius: 3px;
+    margin-top: 4px;
+
+    .suggestion-icon {
+      margin-right: 4px;
+    }
+  }
+}
+
+.file-actions {
+  margin-left: 12px;
+
+  .remove-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background-color: #dc3545;
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: #c82333;
+      transform: scale(1.1);
+    }
+  }
+}
+
+.compression-stats {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 20px;
+
+  .stats-header {
+    margin-bottom: 12px;
+
+    h4 {
+      margin: 0;
+      font-size: 16px;
+      color: #333;
+    }
+  }
+
+  .stats-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #e9ecef;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .stat-label {
+        font-size: 14px;
+        color: #666;
+      }
+
+      .stat-value {
+        font-size: 14px;
+        font-weight: 500;
+        color: #333;
+
+        &.savings {
+          color: #28a745;
+        }
+      }
+    }
+  }
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+
+  .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.btn-secondary {
+      background-color: #6c757d;
+      color: white;
+
+      &:hover {
+        background-color: #5a6268;
+      }
+    }
+
+    &.btn-primary {
+      background-color: #007bff;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background-color: #0056b3;
+      }
+
+      &:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .image-upload-container {
+    padding: 0 16px;
+  }
+
+  .upload-area {
+    padding: 30px 16px;
+  }
+
+  .file-item {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .file-preview {
+    width: 100%;
+    height: 120px;
+    margin-right: 0;
+    margin-bottom: 12px;
+  }
+
+  .file-info {
+    width: 100%;
+  }
+
+  .file-actions {
+    margin-left: 0;
+    margin-top: 12px;
+    align-self: flex-end;
+  }
+
+  .compression-stats .stats-content {
+    grid-template-columns: 1fr;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+
+    .btn {
+      width: 100%;
+    }
+  }
+}
+
+// 深色主题支持
+@media (prefers-color-scheme: dark) {
+  .upload-area {
+    background-color: #2d3748;
+    border-color: #4a5568;
+
+    &:hover {
+      background-color: #2b6cb0;
+    }
+
+    &.drag-over {
+      background-color: #2b6cb0;
+    }
+  }
+
+  .file-item {
+    background-color: #2d3748;
+    border-color: #4a5568;
+
+    &:hover {
+      border-color: #63b3ed;
+    }
+  }
+
+  .file-name {
+    color: #e2e8f0;
+  }
+
+  .file-size {
+    color: #a0aec0;
+  }
+
+  .compression-stats {
+    background-color: #2d3748;
+  }
+
+  .stats-header h4 {
+    color: #e2e8f0;
+  }
+
+  .stat-label {
+    color: #a0aec0;
+  }
+
+  .stat-value {
+    color: #e2e8f0;
+  }
+}

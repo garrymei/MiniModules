@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { request } from '../../services/request'
 import { ContentCard } from './ContentCard'
 import './ContentList.scss'
 
@@ -53,14 +54,14 @@ export const ContentList: React.FC<ContentListProps> = ({
       if (limit) params.push(`limit=${limit}`)
       const queryString = params.length > 0 ? `?${params.join('&')}` : ''
 
-      const response = await Taro.request({
-        url: `/api/cms/articles/${tenantId}${queryString}`,
+      const data = await request<Article[]>({
+        path: `cms/articles/${tenantId}${queryString}`,
         method: 'GET'
       })
 
-      if (response.statusCode === 200 && response.data) {
-        setArticles(response.data)
-        setHasMore(response.data.length >= limit)
+      if (Array.isArray(data)) {
+        setArticles(data)
+        setHasMore(data.length >= limit)
       }
     } catch (error) {
       console.error('加载文章失败:', error)
@@ -81,8 +82,8 @@ export const ContentList: React.FC<ContentListProps> = ({
 
   const handleArticleClick = (article: Article) => {
     // 记录点击统计
-    Taro.request({
-      url: `/api/cms/articles/${tenantId}/${article.id}`,
+    request({
+      path: `cms/articles/${tenantId}/${article.id}`,
       method: 'GET'
     }).catch(error => {
       console.error('记录文章访问失败:', error)

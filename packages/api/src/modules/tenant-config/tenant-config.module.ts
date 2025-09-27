@@ -6,10 +6,15 @@ import { ConfigVersioningController, PlatformConfigController, PublicConfigContr
 import { ConfigVersioningService } from './services/config-versioning.service';
 import { IndustryTemplateController } from './controllers/industry-template.controller';
 import { IndustryTemplateService } from './services/industry-template.service';
+import { ConfigMergeService } from './services/config-merge.service';
 import { TenantModuleConfig } from '../../entities/tenant-module-config.entity';
+import { PlatformModule } from '../platform/platform.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TenantModuleConfig])],
+  imports: [
+    TypeOrmModule.forFeature([TenantModuleConfig]),
+    PlatformModule,
+  ],
   controllers: [
     TenantConfigController,
     ConfigVersioningController,
@@ -17,7 +22,17 @@ import { TenantModuleConfig } from '../../entities/tenant-module-config.entity';
     PublicConfigController,
     IndustryTemplateController,
   ],
-  providers: [TenantConfigService, ConfigVersioningService, IndustryTemplateService],
-  exports: [TenantConfigService, ConfigVersioningService, IndustryTemplateService],
+  providers: [
+    TenantConfigService, 
+    ConfigVersioningService, 
+    IndustryTemplateService,
+    ConfigMergeService,
+  ],
+  exports: [
+    TenantConfigService, 
+    ConfigVersioningService, 
+    IndustryTemplateService,
+    ConfigMergeService,
+  ],
 })
 export class TenantConfigModule {}

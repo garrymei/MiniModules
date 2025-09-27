@@ -1,4 +1,4 @@
-﻿import type { LoginPayload, LoginResponse, AuthUser } from "../types/auth"
+import type { LoginPayload, LoginResponse, AuthUser, PermissionProfile } from "../types/auth"
 import { apiClient, setAuthToken } from "./apiClient"
 
 const mockUser: AuthUser = {
@@ -6,6 +6,8 @@ const mockUser: AuthUser = {
   name: "Developer",
   email: "dev@example.com",
   roles: ["admin"],
+  tenants: ["tenant_001"],
+  tenantId: "tenant_001",
 }
 
 export const login = async (payload: LoginPayload): Promise<LoginResponse> => {
@@ -37,6 +39,24 @@ export const getProfile = async (): Promise<AuthUser> => {
   } catch (error) {
     if (import.meta.env.DEV) {
       return mockUser
+    }
+    throw error
+  }
+}
+
+export const getPermissions = async (tenantId?: string): Promise<PermissionProfile> => {
+  try {
+    const response = await apiClient.get<PermissionProfile>("/auth/me/permissions", {
+      params: tenantId ? { tenantId } : undefined,
+    })
+    return response.data
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      return {
+        tenantId: tenantId || mockUser.tenantId || mockUser.tenants?.[0] || "tenant_001",
+        enabledModules: ["ordering", "booking", "cms", "notify", "search", "usage"],
+        permissions: ["*"],
+      }
     }
     throw error
   }

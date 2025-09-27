@@ -1,9 +1,14 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { OrderingService, CreateOrderDto, UpdateOrderDto } from './ordering.service';
-import { Order } from '../../entities/order.entity';
+import { Order, OrderStatus } from '../../entities/order.entity';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { RequireModule } from '../../decorators/require-module.decorator';
+
+class UpdateOrderStatusDto {
+  status: OrderStatus;
+  metadata?: Record<string, any>;
+}
 
 @ApiTags('ordering')
 @Controller('ordering')
@@ -67,6 +72,23 @@ export class OrderingController {
     @Body() updateOrderDto: UpdateOrderDto,
   ): Promise<Order> {
     return this.orderingService.updateOrder(id, updateOrderDto);
+  }
+
+  @Put('orders/:id/status')
+  @RequireModule('ordering')
+  @ApiOperation({ summary: '更新订单状态' })
+  @ApiParam({ name: 'id', description: '订单ID' })
+  @ApiResponse({ status: 200, description: '订单状态更新成功', type: Order })
+  @ApiResponse({ status: 404, description: '订单未找到' })
+  @ApiResponse({ status: 400, description: '无效的状态转换' })
+  async updateOrderStatus(
+    @Param('id') id: string,
+    @Body() updateStatusDto: UpdateOrderStatusDto,
+  ): Promise<Order> {
+    return this.orderingService.updateOrderStatus(id, updateStatusDto.status, {
+      metadata: updateStatusDto.metadata,
+      idempotent: true
+    });
   }
 
   @Delete('orders/:id')

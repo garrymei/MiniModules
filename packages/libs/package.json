@@ -4,6 +4,10 @@
   "description": "Shared libraries for MiniModules platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./i18n": "./dist/i18n/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

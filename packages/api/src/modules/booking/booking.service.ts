@@ -5,9 +5,13 @@ import { Booking, BookingStatus } from '../../entities/booking.entity';
 import { UsageService } from '../usage/usage.service';
 import { UsageMetric } from '../../entities/usage-counter.entity';
 import { NotifyService } from '../notify/notify.service';
+import { BookingConflictService } from './services/booking-conflict.service';
+import { VerificationService } from './services/verification.service';
+import { Audit, AUDIT_ACTIONS } from '../../common/decorators/audit.decorator';
 
 export interface CreateBookingDto {
   tenantId: string;
+  resourceId?: string;
   userId?: string;
   bookingDate: Date;
   startTime: string;
@@ -30,13 +34,30 @@ export class BookingService {
     private bookingRepository: Repository<Booking>,
     private readonly usageService: UsageService,
     private readonly notifyService: NotifyService,
+    private readonly bookingConflictService: BookingConflictService,
+    private readonly verificationService: VerificationService,
   ) {}
 
+  @Audit({
+    action: AUDIT_ACTIONS.CREATE,
+    resourceType: 'BOOKING',
+    description: '创建预约',
+    includeRequestData: true,
+  })
   async createBooking(createBookingDto: CreateBookingDto): Promise<Booking> {
     await this.usageService.enforceQuota(createBookingDto.tenantId, UsageMetric.BOOKINGS);
 
-    const booking = this.bookingRepository.create(createBookingDto);
-    const saved = await this.bookingRepository.save(booking);
+    // 使用冲突检查服务创建预约
+    const saved = await this.bookingConflictService.createBookingWithConflictCheck(
+      createBookingDto.tenantId,
+      createBookingDto.resourceId || '',
+      createBookingDto.bookingDate.toISOString().split('T')[0],
+      createBookingDto.startTime,
+      createBookingDto.endTime,
+      createBookingDto.peopleCount,
+      createBookingDto.userId,
+      createBookingDto.metadata,
+    );
 
     await this.usageService.incrementUsage(createBookingDto.tenantId, UsageMetric.BOOKINGS, 1, {
       bookingId: saved.id,

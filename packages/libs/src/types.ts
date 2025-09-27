@@ -10,4 +10,7 @@ export interface TenantConfig {
   industry: string
   enabledModules: string[]
   theme: Record<string, any>
+  version?: number
+  updatedAt?: string
+  status?: string
 }

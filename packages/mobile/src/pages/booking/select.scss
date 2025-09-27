@@ -135,6 +135,8 @@
     background: #f5f5f5;
     color: #ccc;
     cursor: not-allowed;
+    opacity: 0.6; // Added opacity to make it more visually distinct
+    text-decoration: line-through; // Added strikethrough to clearly indicate unavailability
   }
 }
 

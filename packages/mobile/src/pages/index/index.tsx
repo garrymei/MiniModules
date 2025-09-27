@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react"
 import { View, Text } from "@tarojs/components"
-import Taro from "@tarojs/taro"
+import Taro, { useDidShow } from "@tarojs/taro"
 
 import useTenantConfigStore from "../../store/config"
 import { getStoredTenantId } from "../../services/config"
@@ -40,10 +40,29 @@ const IndexPage: React.FC = () => {
     }
   }, [config, loadConfig])
 
+  useDidShow(() => {
+    const tenantId = getStoredTenantId()
+    loadConfig(tenantId).catch((err) => {
+      console.error("Failed to refresh tenant configuration", err)
+    })
+  })
+
   const handleModuleTap = useCallback(
     (moduleId: string) => {
-      const copy = getModuleCopy(moduleId)
-      Taro.showToast({ title: `${copy.title}: coming soon`, icon: "none" })
+      switch (moduleId) {
+        case 'ordering':
+          Taro.navigateTo({ url: '/pages/products/index' })
+          break
+        case 'booking':
+          Taro.navigateTo({ url: '/pages/booking/select' })
+          break
+        case 'user':
+          Taro.navigateTo({ url: '/pages/my/index' })
+          break
+        default:
+          const copy = getModuleCopy(moduleId)
+          Taro.showToast({ title: `${copy.title}: coming soon`, icon: "none" })
+      }
     },
     [],
   )

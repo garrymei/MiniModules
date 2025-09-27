@@ -1,0 +1,63 @@
+.image-with-placeholder {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+
+  .image-content {
+    display: block;
+    transition: opacity 0.3s ease;
+
+    &.image-error {
+      opacity: 0.5;
+    }
+  }
+
+  .image-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f5f5f5;
+    z-index: 1;
+
+    .loading-text {
+      color: #999;
+      font-size: 14px;
+    }
+  }
+
+  .image-error-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.1);
+    z-index: 2;
+
+    .error-text {
+      color: #999;
+      font-size: 12px;
+      text-align: center;
+    }
+  }
+}
+
+// 响应式设计
+@media (max-width: 750px) {
+  .image-with-placeholder {
+    .image-loading .loading-text,
+    .image-error-overlay .error-text {
+      font-size: 12px;
+    }
+  }
+}

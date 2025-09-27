@@ -1,176 +1,130 @@
-import React, { useState, useEffect } from 'react'
-import { View, Text, Button } from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import { getStoredTenantId } from '../../services/config'
-import './index.scss'
+import { useEffect, useMemo, useState } from "react"
+import { View, Text, Button, Input, Textarea } from "@tarojs/components"
+import Taro from "@tarojs/taro"
 
-interface CartItem {
-  id: string
-  productId: string
-  skuId: string
-  name: string
-  price: number
-  quantity: number
-  image?: string
-  specs?: Record<string, string>
-}
+import { listCartItems, updateCartItemQuantity, removeCartItem, clearCart, type CartItem } from "../../services/cart"
+import { getStoredTenantId } from "../../services/config"
+import useUserStore from "../../store/user"
+import { createOrder } from "../../services/orders"
+import { createPayment } from "../../services/payment"
 
-interface CheckoutData {
-  items: CartItem[]
-  totalAmount: number
-  orderType: 'dine_in' | 'takeaway'
-  tableNumber?: string
-  customerName?: string
-  customerPhone?: string
-  remark?: string
-}
+import "./index.scss"
 
-export default function CheckoutPage() {
-  const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
+const CheckoutPage: React.FC = () => {
+  const [items, setItems] = useState<CartItem[]>([])
+  const [orderType, setOrderType] = useState<"dine_in" | "takeout">("dine_in")
+  const [tableNumber, setTableNumber] = useState("")
+  const [customerName, setCustomerName] = useState("")
+  const [customerPhone, setCustomerPhone] = useState("")
+  const [remark, setRemark] = useState("")
   const [loading, setLoading] = useState(false)
-  const [tenantId, setTenantId] = useState('')
+
+  const profile = useUserStore((state) => state.profile)
 
   useEffect(() => {
-    const tenantId = getStoredTenantId()
-    setTenantId(tenantId)
-    loadCartData()
+    const cartItems = listCartItems()
+    setItems(cartItems)
   }, [])
 
-  const loadCartData = () => {
-    // 从本地存储或状态管理获取购物车数据
-    const cartItems: CartItem[] = [
-      {
-        id: '1',
-        productId: 'prod-1',
-        skuId: 'sku-1',
-        name: '招牌汉堡',
-        price: 29.9,
-        quantity: 2,
-        image: 'https://example.com/burger.jpg',
-        specs: { size: '大', spicy: '微辣' }
-      },
-      {
-        id: '2',
-        productId: 'prod-2',
-        skuId: 'sku-2',
-        name: '可乐',
-        price: 8.0,
-        quantity: 1,
-        image: 'https://example.com/coke.jpg'
-      }
-    ]
+  const totalAmount = useMemo(() => {
+    return items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  }, [items])
 
-    const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-
-    setCheckoutData({
-      items: cartItems,
-      totalAmount,
-      orderType: 'dine_in'
-    })
+  const handleQuantityChange = (itemId: string, delta: number) => {
+    const target = items.find((item) => item.id === itemId)
+    if (!target) return
+    const next = target.quantity + delta
+    updateCartItemQuantity(itemId, next)
+    const updated = listCartItems()
+    setItems(updated)
   }
 
-  const handleOrderTypeChange = (type: 'dine_in' | 'takeaway') => {
-    if (checkoutData) {
-      setCheckoutData({
-        ...checkoutData,
-        orderType: type,
-        tableNumber: type === 'dine_in' ? checkoutData.tableNumber : undefined
-      })
-    }
+  const handleRemoveItem = (itemId: string) => {
+    removeCartItem(itemId)
+    setItems(listCartItems())
   }
 
-  const handleInputChange = (field: keyof CheckoutData, value: string) => {
-    if (checkoutData) {
-      setCheckoutData({
-        ...checkoutData,
-        [field]: value
-      })
+  const validate = () => {
+    if (items.length === 0) {
+      Taro.showToast({ title: "购物车为空", icon: "none" })
+      return false
     }
+    if (!profile) {
+      Taro.showToast({ title: "请先登录", icon: "none" })
+      Taro.reLaunch({ url: "/pages/auth/login/index" })
+      return false
+    }
+    if (orderType === "dine_in" && !tableNumber) {
+      Taro.showToast({ title: "请输入桌号", icon: "none" })
+      return false
+    }
+    if (!customerName) {
+      Taro.showToast({ title: "请输入姓名", icon: "none" })
+      return false
+    }
+    if (!customerPhone) {
+      Taro.showToast({ title: "请输入手机号", icon: "none" })
+      return false
+    }
+    return true
   }
 
-  const handleSubmitOrder = async () => {
-    if (!checkoutData) return
-
-    // 验证必填字段
-    if (checkoutData.orderType === 'dine_in' && !checkoutData.tableNumber) {
-      Taro.showToast({ title: '请输入桌号', icon: 'none' })
-      return
-    }
-
-    if (!checkoutData.customerName) {
-      Taro.showToast({ title: '请输入姓名', icon: 'none' })
-      return
-    }
-
-    if (!checkoutData.customerPhone) {
-      Taro.showToast({ title: '请输入手机号', icon: 'none' })
+  const handleSubmit = async () => {
+    if (!validate()) {
       return
     }
 
     try {
       setLoading(true)
-
-      // 1. 创建订单
-      const orderResponse = await Taro.request({
-        url: '/api/orders',
-        method: 'POST',
-        data: {
-          tenantId,
-          items: checkoutData.items.map(item => ({
-            productId: item.productId,
-            skuId: item.skuId,
-            quantity: item.quantity,
-            price: item.price
-          })),
-          orderType: checkoutData.orderType,
-          tableNumber: checkoutData.tableNumber,
-          customerName: checkoutData.customerName,
-          customerPhone: checkoutData.customerPhone,
-          remark: checkoutData.remark,
-          totalAmount: checkoutData.totalAmount
-        }
+      const tenantId = getStoredTenantId()
+      const order = await createOrder({
+        tenantId,
+        userId: profile!.userId,
+        orderType,
+        totalAmount,
+        items: items.map((item) => ({
+          productId: item.productId,
+          skuId: item.skuId,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        metadata: {
+          tableNumber: orderType === "dine_in" ? tableNumber : undefined,
+          customerName,
+          customerPhone,
+          remark,
+        },
       })
 
-      if (orderResponse.statusCode !== 201) {
-        throw new Error('创建订单失败')
-      }
-
-      const order = orderResponse.data
-
-      // 2. 创建支付订单
-      const paymentResponse = await Taro.request({
-        url: '/api/pay/create',
-        method: 'POST',
-        data: {
-          orderId: order.id,
-          amount: checkoutData.totalAmount
-        }
+      const payment = await createPayment({
+        orderId: order.id,
+        amount: totalAmount,
+        description: `订单 ${order.orderNumber}`,
       })
 
-      if (paymentResponse.statusCode !== 200) {
-        throw new Error('创建支付订单失败')
-      }
+      clearCart()
+      setItems([])
 
-      const paymentData = paymentResponse.data
-
-      // 3. 跳转到订单确认页
       Taro.redirectTo({
-        url: `/pages/order-confirm/index?orderId=${order.id}&paymentId=${paymentData.paymentId}`
+        url: `/pages/order-confirm/index?orderId=${order.id}&paymentId=${payment.prepayId}`,
       })
-
     } catch (error) {
-      console.error('提交订单失败:', error)
-      Taro.showToast({ title: '提交失败，请重试', icon: 'none' })
+      console.error("提交订单失败", error)
+      const message = error instanceof Error ? error.message : "提交失败，请重试"
+      Taro.showToast({ title: message, icon: "none" })
     } finally {
       setLoading(false)
     }
   }
 
-  if (!checkoutData) {
+  if (items.length === 0) {
     return (
       <View className="checkout-page">
-        <View className="checkout-loading">
-          <Text>加载中...</Text>
+        <View className="checkout-empty">
+          <Text className="checkout-empty__text">购物车为空</Text>
+          <Button className="checkout-empty__btn" onClick={() => Taro.switchTab({ url: "/pages/index/index" })}>
+            返回首页选购
+          </Button>
         </View>
       </View>
     )
@@ -180,117 +134,113 @@ export default function CheckoutPage() {
     <View className="checkout-page">
       <View className="checkout-header">
         <Text className="checkout-title">确认订单</Text>
+        <Text className="checkout-subtitle">共 {items.length} 件商品</Text>
       </View>
 
-      {/* 商品列表 */}
       <View className="checkout-section">
         <Text className="section-title">商品清单</Text>
-        {checkoutData.items.map((item) => (
+        {items.map((item) => (
           <View key={item.id} className="checkout-item">
-            <View className="item-info">
-              <Text className="item-name">{item.name}</Text>
-              {item.specs && (
-                <Text className="item-specs">
-                  {Object.entries(item.specs).map(([key, value]) => `${key}: ${value}`).join(', ')}
-                </Text>
-              )}
+            <View className="checkout-item__info">
+              <Text className="checkout-item__name">{item.productName}</Text>
+              {item.skuName && <Text className="checkout-item__sku">{item.skuName}</Text>}
             </View>
-            <View className="item-quantity">
-              <Text>×{item.quantity}</Text>
-            </View>
-            <View className="item-price">
-              <Text>¥{(item.price * item.quantity).toFixed(2)}</Text>
+            <View className="checkout-item__actions">
+              <Text className="checkout-item__price">¥{item.price.toFixed(2)}</Text>
+              <View className="quantity-control">
+                <Button className="quantity-btn" onClick={() => handleQuantityChange(item.id, -1)}>-</Button>
+                <Text className="quantity-value">{item.quantity}</Text>
+                <Button className="quantity-btn" onClick={() => handleQuantityChange(item.id, 1)}>+</Button>
+              </View>
+              <Text className="remove-link" onClick={() => handleRemoveItem(item.id)}>
+                删除
+              </Text>
             </View>
           </View>
         ))}
       </View>
 
-      {/* 订单类型 */}
       <View className="checkout-section">
         <Text className="section-title">订单类型</Text>
         <View className="order-type-selector">
-          <View 
-            className={`type-option ${checkoutData.orderType === 'dine_in' ? 'active' : ''}`}
-            onClick={() => handleOrderTypeChange('dine_in')}
+          <View
+            className={`type-option ${orderType === "dine_in" ? "type-option--active" : ""}`}
+            onClick={() => setOrderType("dine_in")}
           >
             <Text>堂食</Text>
           </View>
-          <View 
-            className={`type-option ${checkoutData.orderType === 'takeaway' ? 'active' : ''}`}
-            onClick={() => handleOrderTypeChange('takeaway')}
+          <View
+            className={`type-option ${orderType === "takeout" ? "type-option--active" : ""}`}
+            onClick={() => setOrderType("takeout")}
           >
             <Text>外卖</Text>
           </View>
         </View>
 
-        {checkoutData.orderType === 'dine_in' && (
+        {orderType === "dine_in" ? (
           <View className="input-group">
-            <Text className="input-label">桌号</Text>
-            <input
+            <Text className="input-label">桌号 *</Text>
+            <Input
               className="input-field"
               placeholder="请输入桌号"
-              value={checkoutData.tableNumber || ''}
-              onInput={(e) => handleInputChange('tableNumber', e.detail.value)}
+              value={tableNumber}
+              onInput={(event) => setTableNumber(event.detail.value)}
             />
           </View>
-        )}
+        ) : null}
       </View>
 
-      {/* 客户信息 */}
       <View className="checkout-section">
-        <Text className="section-title">联系信息</Text>
+        <Text className="section-title">联系人信息</Text>
         <View className="input-group">
           <Text className="input-label">姓名 *</Text>
-          <input
+          <Input
             className="input-field"
             placeholder="请输入姓名"
-            value={checkoutData.customerName || ''}
-            onInput={(e) => handleInputChange('customerName', e.detail.value)}
+            value={customerName}
+            onInput={(event) => setCustomerName(event.detail.value)}
           />
         </View>
         <View className="input-group">
           <Text className="input-label">手机号 *</Text>
-          <input
+          <Input
             className="input-field"
             placeholder="请输入手机号"
             type="number"
-            value={checkoutData.customerPhone || ''}
-            onInput={(e) => handleInputChange('customerPhone', e.detail.value)}
+            maxLength={11}
+            value={customerPhone}
+            onInput={(event) => setCustomerPhone(event.detail.value)}
           />
         </View>
         <View className="input-group">
           <Text className="input-label">备注</Text>
-          <textarea
+          <Textarea
             className="input-field textarea"
-            placeholder="请输入备注信息"
-            value={checkoutData.remark || ''}
-            onInput={(e) => handleInputChange('remark', e.detail.value)}
+            placeholder="补充要求，例如：少辣、不加冰"
+            value={remark}
+            onInput={(event) => setRemark(event.detail.value)}
           />
         </View>
       </View>
 
-      {/* 订单总计 */}
       <View className="checkout-total">
         <View className="total-row">
-          <Text>商品总价</Text>
-          <Text>¥{checkoutData.totalAmount.toFixed(2)}</Text>
+          <Text>商品合计</Text>
+          <Text>¥{totalAmount.toFixed(2)}</Text>
         </View>
-        <View className="total-row total-final">
+        <View className="total-row total-row--final">
           <Text>应付金额</Text>
-          <Text className="total-amount">¥{checkoutData.totalAmount.toFixed(2)}</Text>
+          <Text className="total-amount">¥{totalAmount.toFixed(2)}</Text>
         </View>
       </View>
 
-      {/* 提交按钮 */}
       <View className="checkout-footer">
-        <Button 
-          className="submit-button"
-          loading={loading}
-          onClick={handleSubmitOrder}
-        >
-          提交订单
+        <Button className="submit-button" loading={loading} onClick={handleSubmit}>
+          提交订单并支付
         </Button>
       </View>
     </View>
   )
 }
+
+export default CheckoutPage

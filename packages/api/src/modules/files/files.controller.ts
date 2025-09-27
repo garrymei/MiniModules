@@ -1,23 +1,20 @@
-import { 
-  Controller, 
-  Post, 
+import {
+  Controller,
+  Post,
   Get,
-  UseInterceptors, 
-  UploadedFile, 
+  UseInterceptors,
+  UploadedFile,
   UseGuards,
   BadRequestException,
   Param,
   Res,
-  StreamableFile
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
 import { FilesService } from './files.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RequirePermissions } from '../../common/decorators/require-permissions.decorator';
-import { createReadStream } from 'fs';
-import { join } from 'path';
 
 @Controller('admin/files')
 @UseGuards(JwtAuthGuard)
@@ -28,9 +25,12 @@ export class FilesController {
   @RequirePermissions('tenant:files:upload')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
-      destination: './uploads',
+      destination: join(process.cwd(), 'uploads'),
       filename: (req, file, cb) => {
-        const randomName = Array(32).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
+        const randomName = Array(32)
+          .fill(null)
+          .map(() => Math.round(Math.random() * 16).toString(16))
+          .join('');
         cb(null, `${randomName}${extname(file.originalname)}`);
       },
     }),
@@ -44,7 +44,7 @@ export class FilesController {
       }
     },
     limits: {
-      fileSize: 5 * 1024 * 1024, // 5MB
+      fileSize: 10 * 1024 * 1024, // 10MB
     },
   }))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
@@ -59,7 +59,6 @@ export class FilesController {
   async serveFile(@Param('filename') filename: string, @Res() res: any) {
     try {
       const fileStream = await this.filesService.getFileStream(filename);
-      res.setHeader('Content-Type', 'image/jpeg'); // 默认类型，实际应该根据文件类型设置
       fileStream.pipe(res);
     } catch (error) {
       throw new BadRequestException('文件不存在');

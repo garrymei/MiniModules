@@ -1,0 +1,173 @@
+<div class="order-detail-container">
+  <!-- 加载状态 -->
+  <div class="loading-container" *ngIf="loading">
+    <div class="loading-spinner"></div>
+    <p>加载中...</p>
+  </div>
+
+  <!-- 错误状态 -->
+  <div class="error-container" *ngIf="error && !loading">
+    <div class="error-icon">⚠️</div>
+    <p class="error-message">{{ error }}</p>
+    <button class="btn btn-primary" (click)="refreshOrder()">重试</button>
+  </div>
+
+  <!-- 订单详情 -->
+  <div class="order-content" *ngIf="order && !loading">
+    <!-- 头部 -->
+    <div class="order-header">
+      <button class="back-btn" (click)="goBack()">← 返回</button>
+      <h1 class="order-title">订单详情</h1>
+      <button class="refresh-btn" (click)="refreshOrder()">🔄</button>
+    </div>
+
+    <!-- 订单基本信息 -->
+    <div class="order-info">
+      <div class="order-id">
+        <span class="label">订单号:</span>
+        <span class="value">{{ order.id }}</span>
+      </div>
+      <div class="order-status">
+        <span class="status-badge" [style.background-color]="getStatusColor(order.status)">
+          {{ getStatusIcon(order.status) }} {{ getStatusLabel(order.status) }}
+        </span>
+      </div>
+      <div class="order-time">
+        <span class="label">创建时间:</span>
+        <span class="value">{{ order.createdAt | date:'yyyy-MM-dd HH:mm:ss' }}</span>
+      </div>
+      <div class="order-total">
+        <span class="label">订单金额:</span>
+        <span class="value amount">¥{{ order.totalAmount / 100 }}</span>
+      </div>
+    </div>
+
+    <!-- 订单进度 -->
+    <div class="order-progress" *ngIf="orderProgress">
+      <h3>订单进度</h3>
+      <div class="progress-steps">
+        <div 
+          class="step" 
+          *ngFor="let step of orderProgress.steps; let i = index"
+          [class.completed]="step.completed"
+          [class.active]="step.active"
+        >
+          <div class="step-icon">
+            <span *ngIf="step.completed">✓</span>
+            <span *ngIf="!step.completed && !step.active">{{ i + 1 }}</span>
+            <span *ngIf="step.active">⏳</span>
+          </div>
+          <div class="step-content">
+            <div class="step-label">{{ step.label }}</div>
+            <div class="step-description">{{ step.description }}</div>
+            <div class="step-time" *ngIf="step.timestamp">
+              {{ formatTime(step.timestamp) }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 订单商品 -->
+    <div class="order-items" *ngIf="order.items && order.items.length > 0">
+      <h3>订单商品</h3>
+      <div class="item-list">
+        <div class="item" *ngFor="let item of order.items">
+          <div class="item-info">
+            <div class="item-name">{{ item.name }}</div>
+            <div class="item-specs" *ngIf="item.specs">{{ item.specs }}</div>
+            <div class="item-price">¥{{ item.price / 100 }}</div>
+          </div>
+          <div class="item-quantity">x{{ item.quantity }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 核销二维码 -->
+    <div class="verification-section" *ngIf="shouldShowQRCode()">
+      <h3>核销码</h3>
+      <div class="qr-code-container">
+        <div class="qr-code-display" *ngIf="showQRCode && qrCodeImage">
+          <img [src]="qrCodeImage" alt="核销二维码" class="qr-code-image">
+          <div class="qr-code-info">
+            <p class="qr-code-text">请向商家出示此二维码</p>
+            <p class="qr-code-time" *ngIf="!isQRCodeExpired()">
+              剩余时间: {{ getQRCodeRemainingTime() }}
+            </p>
+            <p class="qr-code-expired" *ngIf="isQRCodeExpired()">
+              二维码已过期，请刷新获取新的核销码
+            </p>
+          </div>
+        </div>
+        
+        <div class="qr-code-actions">
+          <button 
+            class="btn btn-primary" 
+            (click)="toggleQRCode()"
+            [disabled]="isQRCodeExpired()"
+          >
+            {{ showQRCode ? '隐藏二维码' : '显示二维码' }}
+          </button>
+          
+          <button 
+            class="btn btn-secondary" 
+            (click)="saveQRCodeToAlbum()"
+            *ngIf="showQRCode && qrCodeImage"
+          >
+            保存到相册
+          </button>
+          
+          <button 
+            class="btn btn-secondary" 
+            (click)="shareOrder()"
+            *ngIf="verificationInfo"
+          >
+            分享订单
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="order-actions">
+      <button 
+        class="btn btn-danger" 
+        (click)="cancelOrder()"
+        *ngIf="canCancel"
+        [disabled]="!cancelReason.trim()"
+      >
+        取消订单
+      </button>
+      
+      <button 
+        class="btn btn-warning" 
+        (click)="requestRefund()"
+        *ngIf="canRefund"
+        [disabled]="!refundReason.trim()"
+      >
+        申请退款
+      </button>
+    </div>
+
+    <!-- 取消/退款原因输入 -->
+    <div class="reason-input" *ngIf="canCancel || canRefund">
+      <div class="input-group" *ngIf="canCancel">
+        <label>取消原因:</label>
+        <textarea 
+          [(ngModel)]="cancelReason" 
+          placeholder="请输入取消原因"
+          rows="3"
+        ></textarea>
+      </div>
+      
+      <div class="input-group" *ngIf="canRefund">
+        <label>退款原因:</label>
+        <textarea 
+          [(ngModel)]="refundReason" 
+          placeholder="请输入退款原因"
+          rows="3"
+        ></textarea>
+      </div>
+    </div>
+  </div>
+</div>

@@ -83,6 +83,26 @@
     "email": "邮箱",
     "website": "网站"
   },
+  "tenantSettings": {
+    "title": "租户设置",
+    "description": "配置租户的基本信息、主题设置等。所有更改将保存为草稿，需要提交审核后才会生效。",
+    "basicInfo": "基本信息",
+    "tenantName": "租户名称",
+    "tenantNamePlaceholder": "例如：美味餐厅",
+    "themeSettings": "主题设置",
+    "primaryColor": "主色调",
+    "logo": "Logo",
+    "uploadLogo": "上传Logo",
+    "noImagePreview": "当前无图片，上传后有预览",
+    "saveDraft": "保存草稿",
+    "saveAndSubmit": "保存并提交",
+    "draftSaveSuccess": "草稿保存成功",
+    "draftSaveFailed": "草稿保存失败",
+    "submitModalTitle": "提交审核",
+    "changeReason": "变更原因",
+    "changeReasonPlaceholder": "例如：更新夏季主题色和新Logo",
+    "submitSuccess": "提交审核成功"
+  },
   "config": {
     "moduleConfig": "模块配置",
     "configVersioning": "配置版本化",

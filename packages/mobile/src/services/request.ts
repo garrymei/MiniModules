@@ -70,6 +70,21 @@ export async function request<TResponse, TBody = Record<string, unknown>>(
       throw new Error("Unauthorized. Please sign in again.")
     }
 
+    if (response.statusCode === 429) {
+      const retryAfter = response.header?.["Retry-After"]
+      const message =
+        typeof response.data === "object" &&
+        response.data !== null &&
+        "message" in response.data
+          ? String((response.data as { message?: string }).message)
+          : "请求过于频繁，请稍后再试"
+      Taro.showToast({ title: message, icon: "none" })
+      if (retryAfter) {
+        console.warn("Quota exceeded, retry after:", retryAfter)
+      }
+      throw new Error(message)
+    }
+
     if (response.statusCode >= 400) {
       const message =
         typeof response.data === "object" &&

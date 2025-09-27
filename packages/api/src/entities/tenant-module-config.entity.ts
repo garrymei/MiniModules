@@ -24,7 +24,7 @@ export class TenantModuleConfig {
   status!: 'draft' | 'submitted' | 'approved' | 'published' | 'rejected';
 
   @Column({ type: 'uuid', nullable: true })
-  approvedBy?: string;
+  approvedBy?: string | null;
 
   @Column({ type: 'text', nullable: true })
   reviewNote?: string;

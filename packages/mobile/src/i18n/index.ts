@@ -1,13 +1,13 @@
-import zhCN from './zh-CN.json';
-import enUS from './en-US.json';
+// Import local dictionaries (including shared ones)
+import sharedZhCN from '@minimodules/libs/src/i18n/zh-CN.json';
+import sharedEnUS from '@minimodules/libs/src/i18n/en-US.json';
+import localZhCN from './zh-CN.json';
+import localEnUS from './en-US.json';
 
-export interface I18nMessages {
-  [key: string]: any;
-}
-
-export const messages: Record<string, I18nMessages> = {
-  'zh-CN': zhCN,
-  'en-US': enUS,
+// Create merged messages by combining shared and local dictionaries
+export const messages: Record<string, any> = {
+  'zh-CN': { ...sharedZhCN, ...localZhCN },
+  'en-US': { ...sharedEnUS, ...localEnUS },
 };
 
 export const supportedLocales = Object.keys(messages);

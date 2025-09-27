@@ -1,249 +1,153 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { 
   Card, 
   Form, 
   Input, 
   Select, 
-  Upload, 
   Button, 
   message, 
   Typography, 
   Row, 
   Col,
-  Divider,
-  Switch
-} from 'antd'
-import { UploadOutlined, SaveOutlined } from '@ant-design/icons'
+  Spin,
+  Image,
+  Space,
+  Modal
+} from 'antd';
+import type { UploadProps } from 'antd';
+import { UploadOutlined, SaveOutlined, SendOutlined } from '@ant-design/icons';
+import { apiClient, getAuthToken } from '../services/apiClient';
+import { API_BASE_URL } from '../config';
+import { useI18n } from '../contexts/I18nContext';
+import { ImageUpload } from '../components/ImageUpload';
 
-const { Title, Paragraph } = Typography
-const { TextArea } = Input
+const { Title, Paragraph, Text } = Typography;
+const { TextArea } = Input;
 
 export const TenantSettingsPage = () => {
-  const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
+  const { tenantId } = useParams<{ tenantId: string }>();
+  const { t } = useI18n();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [isSubmitModalVisible, setIsSubmitModalVisible] = useState(false);
+  const [submitForm] = Form.useForm();
 
-  const industryOptions = [
-    { value: 'restaurant', label: '餐饮' },
-    { value: 'fitness', label: '健身' },
-    { value: 'retail', label: '零售' },
-    { value: 'entertainment', label: '娱乐' },
-    { value: 'membership', label: '会员制' }
-  ]
+  useEffect(() => {
+    const fetchLatestConfig = async () => {
+      if (!tenantId) return;
+      try {
+        setPageLoading(true);
+        const response = await apiClient.get(`/api/tenant-config/${tenantId}`);
+        if (response.data) {
+          form.setFieldsValue(response.data);
+        }
+      } catch (error) {
+        message.error(t('messages.loadFailed'));
+      } finally {
+        setPageLoading(false);
+      }
+    };
+    fetchLatestConfig();
+  }, [tenantId, form, t]);
 
-  const handleSave = async () => {
+  const handleSaveDraft = async () => {
+    if (!tenantId) return;
     try {
-      setLoading(true)
-      const values = await form.validateFields()
-      console.log('保存设置:', values)
-      
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      message.success('设置保存成功')
+      setLoading(true);
+      const values = await form.validateFields();
+      await apiClient.post(`/admin/config/draft/${tenantId}`, values);
+      message.success(t('tenantSettings.draftSaveSuccess'));
     } catch (error) {
-      console.error('保存失败:', error)
-      message.error('保存失败，请重试')
+      message.error(t('tenantSettings.draftSaveFailed'));
     } finally {
-      setLoading(false)
+      setLoading(false);
+    }
+  };
+
+  const showSubmitModal = () => {
+    setIsSubmitModalVisible(true);
+  };
+
+  const handleCancelSubmit = () => {
+    setIsSubmitModalVisible(false);
+    submitForm.resetFields();
+  };
+
+  const handleConfirmSubmit = async (submitValues: { changeReason: string }) => {
+    if (!tenantId) return;
+    try {
+      setLoading(true);
+      const values = await form.validateFields();
+      // First, save the latest changes as a draft
+      await apiClient.post(`/admin/config/draft/${tenantId}`, values);
+      // Then, submit that draft for review
+      await apiClient.post(`/admin/config/submit/${tenantId}`, { changeReason: submitValues.changeReason });
+      
+      message.success(t('tenantSettings.submitSuccess'));
+      handleCancelSubmit();
+    } catch (error) {
+        message.error(t('messages.operationFailed'));
+    } finally {
+        setLoading(false);
     }
   }
 
-  const uploadProps = {
-    name: 'file',
-    action: '/api/upload',
-    headers: {
-      authorization: 'authorization-text',
-    },
-    onChange(info: any) {
-      if (info.file.status !== 'uploading') {
-        console.log(info.file, info.fileList);
-      }
-      if (info.file.status === 'done') {
-        message.success(`${info.file.name} 上传成功`);
-      } else if (info.file.status === 'error') {
-        message.error(`${info.file.name} 上传失败`);
-      }
-    },
-  };
+  if (pageLoading) {
+      return <Spin size="large" />;
+  }
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <Title level={3}>租户设置</Title>
-        <Paragraph type="secondary">
-          配置租户基本信息、主题样式和域名设置
-        </Paragraph>
-      </div>
-
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{
-          industry: 'restaurant',
-          primaryColor: '#FF6A00',
-          buttonRadius: 8,
-          cardStyle: 'elevated',
-          showSearch: true,
-          imageAspectRatio: '1:1'
-        }}
-      >
-        <Card title="基本信息" style={{ marginBottom: 24 }}>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item
-                name="name"
-                label="租户名称"
-                rules={[{ required: true, message: '请输入租户名称' }]}
-              >
-                <Input placeholder="例如：美味餐厅" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="industry"
-                label="行业类型"
-                rules={[{ required: true, message: '请选择行业类型' }]}
-              >
-                <Select options={industryOptions} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item
-            name="description"
-            label="租户描述"
-          >
-            <TextArea rows={3} placeholder="简要描述您的业务..." />
-          </Form.Item>
-
-          <Form.Item
-            name="domain"
-            label="自定义域名"
-          >
-            <Input placeholder="例如：restaurant.minimodules.com" />
-          </Form.Item>
+      <Title level={3}>{t('tenantSettings.title')}</Title>
+      <Paragraph type="secondary">{t('tenantSettings.description')}</Paragraph>
+      <Form form={form} layout="vertical">
+        <Card title={t('tenantSettings.basicInfo')} style={{ marginBottom: 24 }}>
+            <Form.Item name="name" label={t('tenantSettings.tenantName')} rules={[{ required: true }]}>
+                <Input placeholder={t('tenantSettings.tenantNamePlaceholder')} />
+            </Form.Item>
         </Card>
 
-        <Card title="主题配置" style={{ marginBottom: 24 }}>
-          <Row gutter={24}>
-            <Col span={8}>
-              <Form.Item
-                name="primaryColor"
-                label="主色调"
-              >
+        <Card title={t('tenantSettings.themeSettings')} style={{ marginBottom: 24 }}>
+            <Form.Item name={['theme', 'primaryColor']} label={t('theme.primaryColor')}>
                 <Input type="color" />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="buttonRadius"
-                label="按钮圆角"
-              >
-                <Input type="number" min={0} max={20} addonAfter="px" />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="cardStyle"
-                label="卡片样式"
-              >
-                <Select>
-                  <Select.Option value="flat">扁平</Select.Option>
-                  <Select.Option value="elevated">立体</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item
-            name="logo"
-            label="Logo"
-          >
-            <Upload {...uploadProps}>
-              <Button icon={<UploadOutlined />}>上传Logo</Button>
-            </Upload>
-          </Form.Item>
-        </Card>
-
-        <Card title="界面配置" style={{ marginBottom: 24 }}>
-          <Row gutter={24}>
-            <Col span={8}>
-              <Form.Item
-                name="homepageLayout"
-                label="首页布局"
-              >
-                <Select>
-                  <Select.Option value="grid-2">2列网格</Select.Option>
-                  <Select.Option value="grid-3">3列网格</Select.Option>
-                  <Select.Option value="list">列表</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="imageAspectRatio"
-                label="图片比例"
-              >
-                <Select>
-                  <Select.Option value="1:1">1:1</Select.Option>
-                  <Select.Option value="4:3">4:3</Select.Option>
-                  <Select.Option value="16:9">16:9</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="showSearch"
-                label="显示搜索"
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Card>
-
-        <Card title="国际化设置">
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item
-                name="locale"
-                label="语言"
-              >
-                <Select>
-                  <Select.Option value="zh-CN">简体中文</Select.Option>
-                  <Select.Option value="zh-TW">繁体中文</Select.Option>
-                  <Select.Option value="en-US">English</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="timezone"
-                label="时区"
-              >
-                <Select>
-                  <Select.Option value="Asia/Shanghai">北京时间</Select.Option>
-                  <Select.Option value="Asia/Hong_Kong">香港时间</Select.Option>
-                  <Select.Option value="America/New_York">纽约时间</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
+            </Form.Item>
+            <Form.Item name={['theme', 'logo']} label={t('theme.logo')} shouldUpdate>
+                <ImageUpload />
+            </Form.Item>
         </Card>
 
         <div style={{ textAlign: 'center', marginTop: 32 }}>
-          <Button 
-            type="primary" 
-            size="large" 
-            icon={<SaveOutlined />}
-            loading={loading}
-            onClick={handleSave}
-          >
-            保存设置
-          </Button>
+          <Space size="large">
+            <Button size="large" icon={<SaveOutlined />} loading={loading} onClick={handleSaveDraft}>
+                {t('tenantSettings.saveDraft')}
+            </Button>
+            <Button type="primary" size="large" icon={<SendOutlined />} loading={loading} onClick={showSubmitModal}>
+                {t('tenantSettings.saveAndSubmit')}
+            </Button>
+          </Space>
         </div>
       </Form>
+
+      <Modal
+        title={t('tenantSettings.submitModalTitle')}
+        open={isSubmitModalVisible}
+        onCancel={handleCancelSubmit}
+        footer={null}
+      >
+        <Form form={submitForm} onFinish={handleConfirmSubmit} layout="vertical">
+            <Form.Item name="changeReason" label={t('tenantSettings.changeReason')} rules={[{ required: true, message: t('validation.required') }]}>
+                <TextArea rows={4} placeholder={t('tenantSettings.changeReasonPlaceholder')} />
+            </Form.Item>
+            <Form.Item style={{ textAlign: 'right' }}>
+                <Space>
+                    <Button onClick={handleCancelSubmit}>{t('common.cancel')}</Button>
+                    <Button type="primary" htmlType="submit" loading={loading}>{t('common.submit')}</Button>
+                </Space>
+            </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }

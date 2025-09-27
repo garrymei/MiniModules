@@ -1,10 +1,23 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
+import { diff as diffObjects, Diff } from 'deep-diff';
 import { TenantModuleConfig } from '../../entities/tenant-module-config.entity';
-import { TenantConfigDto, UpdateTenantConfigDto, ConfigHistoryDto } from './dto/tenant-config.dto';
+import {
+  TenantConfigDto,
+  UpdateTenantConfigDto,
+  ConfigHistoryDto,
+  WorkflowNoteDto,
+  ApproveConfigDto,
+  ConfigDiffResponseDto,
+  ConfigDiffItemDto,
+} from './dto/tenant-config.dto';
 import { ModuleSpecService } from '../platform/module-spec.service';
 import { ModuleDependencyService } from '../platform/module-dependency.service';
+import { ConfigMergeService } from './services/config-merge.service';
+import { Audit, AUDIT_ACTIONS } from '../../common/decorators/audit.decorator';
+import { CacheService } from '../../common/services/cache.service';
+import { Cacheable } from '../../common/decorators/cache.decorator';
 
 @Injectable()
 export class TenantConfigService {
@@ -13,6 +26,8 @@ export class TenantConfigService {
     private tenantModuleConfigRepository: Repository<TenantModuleConfig>,
     private moduleSpecService: ModuleSpecService,
     private moduleDependencyService: ModuleDependencyService,
+    private configMergeService: ConfigMergeService,
+    private cacheService: CacheService,
   ) {}
 
   async onModuleInit() {
@@ -20,22 +35,36 @@ export class TenantConfigService {
     this.moduleSpecService.loadAllModuleSpecs();
   }
 
-  async getTenantConfig(tenantId: string): Promise<TenantConfigDto> {
-    const config = await this.tenantModuleConfigRepository.findOne({
-      where: { 
-        tenantId,
-        status: 'published'
-      },
-      order: { version: 'DESC' }
-    });
-
-    if (!config) {
-      throw new NotFoundException(`Published tenant config not found for tenant: ${tenantId}`);
-    }
-
-    return config.configJson as TenantConfigDto;
+  @Cacheable({
+    key: 'tenant-config',
+    ttl: 300, // 5分钟缓存
+    useTenant: true,
+    useParams: true,
+  })
+  async getTenantConfig(tenantId: string, includeDraft = false): Promise<TenantConfigDto> {
+    // 使用配置合并服务获取完整配置
+    const mergedConfig = await this.configMergeService.getMergedTenantConfig(tenantId, includeDraft);
+    
+    return {
+      tenantId,
+      config: mergedConfig.finalConfig,
+      version: mergedConfig.layers.find(l => l.type === 'tenant')?.version || 1,
+      status: includeDraft && mergedConfig.layers.find(l => l.type === 'draft') ? 'draft' : 'published',
+      layers: mergedConfig.layers,
+      conflicts: mergedConfig.conflicts,
+      warnings: mergedConfig.warnings,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 
+  @Audit({
+    action: AUDIT_ACTIONS.UPDATE,
+    resourceType: 'CONFIG',
+    description: '更新租户配置',
+    includeRequestData: true,
+    sensitiveFields: ['password', 'secret', 'apiKey'],
+  })
   async updateTenantConfig(tenantId: string, configDto: UpdateTenantConfigDto): Promise<TenantConfigDto> {
     // 验证启用的模块是否有效
     for (const moduleId of configDto.enabledModules) {
@@ -79,41 +108,181 @@ export class TenantConfigService {
       tenantId,
       configJson: configDto,
       version: newVersion,
+      status: 'draft',
     });
 
-    await this.tenantModuleConfigRepository.save(newConfig);
+    const saved = await this.tenantModuleConfigRepository.save(newConfig);
 
-    return configDto;
+    // 清除相关缓存
+    await this.cacheService.delPattern(`tenant-config:${tenantId}:*`);
+
+    return this.hydrateConfig(saved);
   }
 
   async publishTenantConfig(tenantId: string, version: number): Promise<TenantConfigDto> {
+    const config = await this.getConfigOrFail(tenantId, version);
+
+    await this.tenantModuleConfigRepository.update(
+      { tenantId, status: 'published', version: Not(version) },
+      { status: 'approved' },
+    );
+
+    config.status = 'published';
+    config.publishedAt = new Date();
+    config.approvedAt = config.approvedAt ?? new Date();
+    config.updatedAt = new Date();
+    const saved = await this.tenantModuleConfigRepository.save(config);
+
+    return this.hydrateConfig(saved);
+  }
+
+  async getTenantConfigHistory(tenantId: string): Promise<ConfigHistoryDto[]> {
+    const configs = await this.tenantModuleConfigRepository.find({
+      where: { tenantId },
+      order: { version: 'DESC' },
+    });
+
+    return configs.map((config) => ({
+      version: config.version,
+      status: config.status,
+      createdAt: config.createdAt.toISOString(),
+      updatedAt: config.updatedAt.toISOString(),
+      submittedAt: config.submittedAt?.toISOString(),
+      approvedAt: config.approvedAt?.toISOString(),
+      publishedAt: config.publishedAt?.toISOString(),
+      config: this.hydrateConfig(config),
+    }));
+  }
+
+  async submitTenantConfig(tenantId: string, dto: WorkflowNoteDto): Promise<TenantConfigDto> {
+    const config = await this.getConfigOrFail(tenantId, dto.version);
+
+    if (config.status !== 'draft' && config.status !== 'rejected') {
+      throw new BadRequestException('Only draft or rejected configs can be submitted');
+    }
+
+    config.status = 'submitted';
+    config.submittedAt = new Date();
+    config.reviewNote = dto.note;
+    config.updatedAt = new Date();
+    const saved = await this.tenantModuleConfigRepository.save(config);
+
+    return this.hydrateConfig(saved);
+  }
+
+  async approveTenantConfig(tenantId: string, dto: ApproveConfigDto, reviewerId?: string): Promise<TenantConfigDto> {
+    const config = await this.getConfigOrFail(tenantId, dto.version);
+
+    if (config.status !== 'submitted') {
+      throw new BadRequestException('Only submitted configs can be approved');
+    }
+
+    config.status = 'approved';
+    config.approvedAt = new Date();
+    config.approvedBy = reviewerId ?? null;
+    config.reviewNote = dto.note;
+    config.updatedAt = new Date();
+    const saved = await this.tenantModuleConfigRepository.save(config);
+
+    if (dto.publish) {
+      return this.publishTenantConfig(tenantId, dto.version);
+    }
+
+    return this.hydrateConfig(saved);
+  }
+
+  async rollbackTenantConfig(tenantId: string, targetVersion: number, note?: string): Promise<TenantConfigDto> {
+    const origin = await this.getConfigOrFail(tenantId, targetVersion);
+
+    if (origin.status !== 'published' && origin.status !== 'approved') {
+      throw new BadRequestException('Only approved or published versions can be rolled back');
+    }
+
+    const latest = await this.tenantModuleConfigRepository.findOne({
+      where: { tenantId },
+      order: { version: 'DESC' },
+    });
+
+    const nextVersion = latest ? latest.version + 1 : targetVersion + 1;
+
+    const rollbackConfig = this.tenantModuleConfigRepository.create({
+      tenantId,
+      configJson: origin.configJson,
+      version: nextVersion,
+      status: 'draft',
+      reviewNote: note ? `${note} (rollback from v${targetVersion})` : `Rollback from version ${targetVersion}`,
+    });
+
+    const saved = await this.tenantModuleConfigRepository.save(rollbackConfig);
+
+    return this.hydrateConfig(saved);
+  }
+
+  async getConfigDiff(tenantId: string, fromVersion: number, toVersion: number): Promise<ConfigDiffResponseDto> {
+    if (fromVersion === toVersion) {
+      return { fromVersion, toVersion, diffs: [] };
+    }
+
+    const fromConfig = await this.getConfigOrFail(tenantId, fromVersion);
+    const toConfig = await this.getConfigOrFail(tenantId, toVersion);
+
+    const differences = diffObjects(fromConfig.configJson, toConfig.configJson) || [];
+    const normalized = this.normalizeDiffs(differences);
+
+    return {
+      fromVersion,
+      toVersion,
+      diffs: normalized,
+    };
+  }
+
+  async getTenantConfigMeta(tenantId: string) {
     const config = await this.tenantModuleConfigRepository.findOne({
-      where: { tenantId, version }
+      where: { tenantId, status: 'published' },
+      order: { version: 'DESC' },
+      select: ['version', 'updatedAt', 'status', 'publishedAt'],
+    });
+
+    if (!config) {
+      throw new NotFoundException(`Published tenant config not found for tenant: ${tenantId}`);
+    }
+
+    return {
+      tenantId,
+      version: config.version,
+      status: config.status,
+      updatedAt: (config.publishedAt || config.updatedAt).toISOString(),
+    };
+  }
+
+  private hydrateConfig(config: TenantModuleConfig): TenantConfigDto {
+    const payload = config.configJson as TenantConfigDto;
+    return {
+      ...payload,
+      version: config.version,
+      status: config.status,
+      updatedAt: config.updatedAt.toISOString(),
+    };
+  }
+
+  private async getConfigOrFail(tenantId: string, version: number): Promise<TenantModuleConfig> {
+    const config = await this.tenantModuleConfigRepository.findOne({
+      where: { tenantId, version },
     });
 
     if (!config) {
       throw new NotFoundException(`Tenant config not found for tenant: ${tenantId}, version: ${version}`);
     }
 
-    // 更新状态为已发布
-    config.status = 'published';
-    await this.tenantModuleConfigRepository.save(config);
-
-    return config.configJson as TenantConfigDto;
+    return config;
   }
 
-  async getTenantConfigHistory(tenantId: string): Promise<ConfigHistoryDto[]> {
-    const configs = await this.tenantModuleConfigRepository.find({
-      where: { tenantId },
-      order: { version: 'DESC' }
-    });
-
-    return configs.map(config => ({
-      version: config.version,
-      status: config.status,
-      createdAt: config.createdAt.toISOString(),
-      updatedAt: config.updatedAt.toISOString(),
-      config: config.configJson as TenantConfigDto
+  private normalizeDiffs(differences: Diff<any, any>[]): ConfigDiffItemDto[] {
+    return differences.map((item) => ({
+      path: (item.path || []).join('.'),
+      kind: item.kind,
+      lhs: (item as any).lhs,
+      rhs: (item as any).rhs,
     }));
   }
 }

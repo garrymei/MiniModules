@@ -1,0 +1,127 @@
+<div class="image-upload-container">
+  <!-- 上传区域 -->
+  <div 
+    class="upload-area"
+    [class.drag-over]="dragOver"
+    [class.uploading]="isUploading"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+    (click)="fileInput.click()"
+  >
+    <input
+      #fileInput
+      type="file"
+      multiple
+      [accept]="acceptedTypes.join(',')"
+      (change)="onFileSelected($event)"
+      style="display: none;"
+    />
+
+    <div class="upload-content" *ngIf="!isUploading">
+      <i class="upload-icon">📁</i>
+      <p class="upload-text">{{ placeholder }}</p>
+      <p class="upload-hint">支持 {{ acceptedTypes.join(', ') }} 格式</p>
+      <p class="upload-hint">最大 {{ formatFileSize(maxFileSize) }}，最多 {{ maxFiles }} 个文件</p>
+    </div>
+
+    <div class="upload-progress" *ngIf="isUploading">
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="uploadProgressValue"></div>
+      </div>
+      <p class="progress-text">正在处理图片... {{ uploadProgressValue }}%</p>
+    </div>
+  </div>
+
+  <!-- 文件列表 -->
+  <div class="file-list" *ngIf="selectedFiles.length > 0">
+    <div class="file-item" *ngFor="let file of selectedFiles; let i = index">
+      <div class="file-preview" *ngIf="showPreview">
+        <img [src]="getFilePreview(file)" [alt]="file.name" />
+      </div>
+      
+      <div class="file-info">
+        <div class="file-name">{{ file.name }}</div>
+        <div class="file-size">{{ formatFileSize(file.size) }}</div>
+        
+        <!-- 压缩信息 -->
+        <div class="compression-info" *ngIf="enableCompression && compressedFiles[i]">
+          <div class="compression-stats">
+            <span class="original-size">原始: {{ formatFileSize(compressedFiles[i].originalSize) }}</span>
+            <span class="compressed-size">压缩: {{ formatFileSize(compressedFiles[i].compressedSize) }}</span>
+            <span class="compression-ratio" [class.good]="compressedFiles[i].compressionRatio > 50">
+              节省: {{ compressedFiles[i].compressionRatio.toFixed(1) }}%
+            </span>
+          </div>
+          
+          <div class="compression-suggestion" *ngIf="getCompressionSuggestion(file).recommended">
+            <i class="suggestion-icon">💡</i>
+            <span class="suggestion-text">{{ getCompressionSuggestion(file).reason }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="file-actions">
+        <button 
+          class="remove-btn" 
+          (click)="removeFile(i)"
+          title="删除文件"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 压缩统计 -->
+  <div class="compression-stats" *ngIf="enableCompression && compressedFiles.length > 0">
+    <div class="stats-header">
+      <h4>压缩统计</h4>
+    </div>
+    
+    <div class="stats-content">
+      <div class="stat-item">
+        <span class="stat-label">总文件数:</span>
+        <span class="stat-value">{{ compressedFiles.length }}</span>
+      </div>
+      
+      <div class="stat-item">
+        <span class="stat-label">原始大小:</span>
+        <span class="stat-value">{{ formatFileSize(getCompressionStats().totalOriginalSize) }}</span>
+      </div>
+      
+      <div class="stat-item">
+        <span class="stat-label">压缩后大小:</span>
+        <span class="stat-value">{{ formatFileSize(getCompressionStats().totalCompressedSize) }}</span>
+      </div>
+      
+      <div class="stat-item">
+        <span class="stat-label">节省空间:</span>
+        <span class="stat-value savings">{{ formatFileSize(getCompressionStats().totalSavings) }}</span>
+      </div>
+      
+      <div class="stat-item">
+        <span class="stat-label">平均压缩率:</span>
+        <span class="stat-value">{{ getCompressionStats().averageCompressionRatio.toFixed(1) }}%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 操作按钮 -->
+  <div class="action-buttons" *ngIf="selectedFiles.length > 0">
+    <button 
+      class="btn btn-secondary" 
+      (click)="clearFiles()"
+    >
+      清空所有
+    </button>
+    
+    <button 
+      class="btn btn-primary" 
+      [disabled]="isUploading"
+      (click)="filesCompressed.emit(compressedFiles)"
+    >
+      确认上传
+    </button>
+  </div>
+</div>

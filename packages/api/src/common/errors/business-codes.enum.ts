@@ -35,12 +35,27 @@ export enum BusinessErrorCode {
   ORDER_ALREADY_PAID = 6002,
   ORDER_CANNOT_CANCEL = 6003,
   INSUFFICIENT_STOCK = 6004,
+  OUT_OF_STOCK = 6005,
+  ORDER_ALREADY_EXISTS = 6006,
+  SKU_NOT_FOUND = 6007,
+  SKU_INACTIVE = 6008,
 
   // 预约相关错误
   BOOKING_NOT_FOUND = 7000,
   BOOKING_SLOT_UNAVAILABLE = 7001,
   BOOKING_TIME_CONFLICT = 7002,
   BOOKING_CANNOT_CANCEL = 7003,
+  CONFLICT_SLOT = 7004,
+  BOOKING_ALREADY_VERIFIED = 7005,
+  BOOKING_EXPIRED = 7006,
+  RESOURCE_UNAVAILABLE = 7008,
+  RESOURCE_CAPACITY_EXCEEDED = 7009,
+
+  // 核销相关错误
+  VERIFICATION_CODE_EXPIRED = 7100,
+  VERIFICATION_CODE_INVALID = 7101,
+  VERIFICATION_CODE_USED = 7102,
+  VERIFICATION_ATTEMPTS_EXCEEDED = 7103,
 
   // 支付相关错误
   PAYMENT_FAILED = 8000,
@@ -86,11 +101,25 @@ export const BusinessErrorMessages: Record<BusinessErrorCode, string> = {
   [BusinessErrorCode.ORDER_ALREADY_PAID]: '订单已支付',
   [BusinessErrorCode.ORDER_CANNOT_CANCEL]: '订单无法取消',
   [BusinessErrorCode.INSUFFICIENT_STOCK]: '库存不足',
+  [BusinessErrorCode.OUT_OF_STOCK]: '商品缺货',
+  [BusinessErrorCode.ORDER_ALREADY_EXISTS]: '订单已存在',
+  [BusinessErrorCode.SKU_NOT_FOUND]: '商品规格不存在',
+  [BusinessErrorCode.SKU_INACTIVE]: '商品规格已下架',
 
   [BusinessErrorCode.BOOKING_NOT_FOUND]: '预约不存在',
   [BusinessErrorCode.BOOKING_SLOT_UNAVAILABLE]: '预约时段不可用',
   [BusinessErrorCode.BOOKING_TIME_CONFLICT]: '预约时间冲突',
   [BusinessErrorCode.BOOKING_CANNOT_CANCEL]: '预约无法取消',
+  [BusinessErrorCode.CONFLICT_SLOT]: '时段冲突',
+  [BusinessErrorCode.BOOKING_ALREADY_VERIFIED]: '预约已核销',
+  [BusinessErrorCode.BOOKING_EXPIRED]: '预约已过期',
+  [BusinessErrorCode.RESOURCE_UNAVAILABLE]: '场地不可用',
+  [BusinessErrorCode.RESOURCE_CAPACITY_EXCEEDED]: '场地容量已满',
+
+  [BusinessErrorCode.VERIFICATION_CODE_EXPIRED]: '核销码已过期',
+  [BusinessErrorCode.VERIFICATION_CODE_INVALID]: '核销码无效',
+  [BusinessErrorCode.VERIFICATION_CODE_USED]: '核销码已使用',
+  [BusinessErrorCode.VERIFICATION_ATTEMPTS_EXCEEDED]: '核销尝试次数超限',
 
   [BusinessErrorCode.PAYMENT_FAILED]: '支付失败',
   [BusinessErrorCode.PAYMENT_NOT_FOUND]: '支付记录不存在',

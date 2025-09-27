@@ -4,31 +4,21 @@ import { Repository } from 'typeorm';
 import { Order, OrderStatus } from '../../entities/order.entity';
 import { Booking, BookingStatus } from '../../entities/booking.entity';
 import { NotifyService } from '../notify/notify.service';
-
-export interface CreatePaymentDto {
-  orderId?: string;
-  bookingId?: string;
-  amount: number;
-  paymentMethod: 'wechat' | 'alipay';
-  description?: string;
-}
+import { CreatePaymentDto, PaymentNotifyDto, PaymentMethod, PaymentStatus } from './dto/payment.dto';
+import * as crypto from 'crypto';
 
 export interface PaymentResult {
-  prepayId: string;
+  package: string;  // Changed from prepayId to package for JSAPI compatibility
   nonceStr: string;
   timeStamp: string;
   paySign: string;
+  signType: string; // Added signType for JSAPI compatibility
   orderId: string;
   amount: number;
 }
 
-export interface PaymentNotifyDto {
-  orderId: string;
-  transactionId: string;
-  status: 'success' | 'failed';
-  amount: number;
-  timestamp: string;
-}
+// Export the DTOs so they can be imported directly from the service
+export { CreatePaymentDto, PaymentNotifyDto, PaymentMethod, PaymentStatus } from './dto/payment.dto';
 
 @Injectable()
 export class PaymentService {
@@ -43,31 +33,15 @@ export class PaymentService {
   ) {}
 
   async createPayment(createPaymentDto: CreatePaymentDto): Promise<PaymentResult> {
-    const { orderId, bookingId, amount, paymentMethod, description } = createPaymentDto;
+    const { orderId, amount, method, description } = createPaymentDto;
 
-    // 验证订单或预约是否存在
-    let entity: Order | Booking | null = null;
-    let entityType: 'order' | 'booking' = 'order';
-
-    if (orderId) {
-      entity = await this.orderRepository.findOne({ where: { id: orderId } });
-      if (!entity) {
-        throw new NotFoundException(`Order with ID ${orderId} not found`);
-      }
-      if (entity.status !== OrderStatus.PENDING) {
-        throw new BadRequestException('Order is not in pending status');
-      }
-    } else if (bookingId) {
-      entity = await this.bookingRepository.findOne({ where: { id: bookingId } });
-      entityType = 'booking';
-      if (!entity) {
-        throw new NotFoundException(`Booking with ID ${bookingId} not found`);
-      }
-      if (entity.status !== BookingStatus.PENDING) {
-        throw new BadRequestException('Booking is not in pending status');
-      }
-    } else {
-      throw new BadRequestException('Either orderId or bookingId is required');
+    // 验证订单是否存在
+    const order = await this.orderRepository.findOne({ where: { id: orderId } });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('Order is not in pending status');
     }
 
     // 生成模拟的支付信息
@@ -77,28 +51,34 @@ export class PaymentService {
     const paySign = this.generatePaySign(prepayId, nonceStr, timeStamp);
 
     return {
-      prepayId,
+      package: `prepay_id=${prepayId}`, // Changed from prepayId to package
       nonceStr,
       timeStamp,
       paySign,
-      orderId: orderId || bookingId,
+      signType: 'MD5', // Added signType
+      orderId: orderId,
       amount,
     };
   }
 
   async handlePaymentNotify(notifyDto: PaymentNotifyDto): Promise<{ success: boolean; message: string }> {
-    const { orderId, status, amount } = notifyDto;
+    const { paymentId, status, transactionId, paidAt } = notifyDto;
 
     try {
+      // 这里应该根据paymentId查找对应的订单
+      // 为了简化，我们假设paymentId就是orderId
+      const orderId = paymentId;
+      
       const order = await this.orderRepository.findOne({ where: { id: orderId } });
       if (order) {
-        if (status === 'success') {
-          order.status = OrderStatus.CONFIRMED;
+        if (status === PaymentStatus.PAID) {
+          // 更新订单状态为已支付
+          order.status = OrderStatus.PAID;
           const updatedOrder = await this.orderRepository.save(order);
           this.dispatchPaymentSuccess('order', updatedOrder.tenantId, {
             orderId: updatedOrder.id,
             orderNumber: updatedOrder.orderNumber,
-            amount,
+            amount: parseFloat(updatedOrder.totalAmount.toString()),
             status: updatedOrder.status,
           }).catch((error) =>
             this.logger.warn('Order payment notify failed', error instanceof Error ? error.message : error),
@@ -106,33 +86,18 @@ export class PaymentService {
           return { success: true, message: 'Order payment processed successfully' };
         }
 
-        order.status = OrderStatus.CANCELLED;
-        await this.orderRepository.save(order);
-        return { success: true, message: 'Order payment failed' };
-      }
-
-      const booking = await this.bookingRepository.findOne({ where: { id: orderId } });
-      if (booking) {
-        if (status === 'success') {
-          booking.status = BookingStatus.CONFIRMED;
-          const updatedBooking = await this.bookingRepository.save(booking);
-          this.dispatchPaymentSuccess('booking', updatedBooking.tenantId, {
-            bookingId: updatedBooking.id,
-            bookingDate: updatedBooking.bookingDate,
-            amount,
-            status: updatedBooking.status,
-          }).catch((error) =>
-            this.logger.warn('Booking payment notify failed', error instanceof Error ? error.message : error),
-          );
-          return { success: true, message: 'Booking payment processed successfully' };
+        if (status === PaymentStatus.FAILED) {
+          // 支付失败，取消订单
+          order.status = OrderStatus.CANCELLED;
+          await this.orderRepository.save(order);
+          return { success: true, message: 'Order payment failed' };
         }
 
-        booking.status = BookingStatus.CANCELLED;
-        await this.bookingRepository.save(booking);
-        return { success: true, message: 'Booking payment failed' };
+        // 其他状态暂不处理
+        return { success: true, message: `Payment status ${status} received` };
       }
 
-      throw new NotFoundException(`Order or booking with ID ${orderId} not found`);
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
     } catch (error) {
       return { success: false, message: (error as Error).message };
     }
@@ -177,15 +142,6 @@ export class PaymentService {
       };
     }
 
-    // 查找预约
-    const booking = await this.bookingRepository.findOne({ where: { id: orderId } });
-    if (booking) {
-      return { 
-        status: booking.status, 
-        amount: 0 // 预约可能没有金额
-      };
-    }
-
-    throw new NotFoundException(`Order or booking with ID ${orderId} not found`);
+    throw new NotFoundException(`Order with ID ${orderId} not found`);
   }
 }

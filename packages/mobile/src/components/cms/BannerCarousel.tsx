@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View, Swiper, SwiperItem, Image, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { request } from '../../services/request'
 import './BannerCarousel.scss'
 
 interface Banner {
@@ -8,8 +9,12 @@ interface Banner {
   title: string
   description?: string
   imageUrl: string
-  linkType: 'product' | 'resource' | 'url' | 'article'
-  linkPayload?: string
+  linkType: 'product' | 'resource' | 'url' | 'article' | 'none'
+  linkPayload?: any
+  sort: number
+  status: 'draft' | 'published' | 'archived'
+  startAt?: string
+  endAt?: string
 }
 
 interface BannerCarouselProps {
@@ -41,13 +46,13 @@ export const BannerCarousel: React.FC<BannerCarouselProps> = ({
   const loadBanners = async () => {
     try {
       setLoading(true)
-      const response = await Taro.request({
-        url: `/api/cms/banners/${tenantId}`,
+      const data = await request<Banner[]>({
+        path: `cms/banners/${tenantId}`,
         method: 'GET'
       })
 
-      if (response.statusCode === 200 && response.data) {
-        setBanners(response.data)
+      if (Array.isArray(data)) {
+        setBanners(data)
       }
     } catch (error) {
       console.error('加载Banner失败:', error)

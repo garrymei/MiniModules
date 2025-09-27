@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsEnum, IsNumber, IsArray, ValidateNested, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNumber, IsArray, ValidateNested, IsUUID, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsPhoneNumber, IsAmount, IsStringLength, IsNonEmptyString, TrimString, ToNumber } from '../../../common/decorators/validation.decorator';
 
 export class OrderItemDto {
   @IsUUID()
@@ -9,9 +10,11 @@ export class OrderItemDto {
   skuId!: string;
 
   @IsNumber()
+  @ToNumber()
   quantity!: number;
 
-  @IsNumber()
+  @IsAmount()
+  @ToNumber()
   price!: number;
 }
 
@@ -28,17 +31,22 @@ export class CreateOrderDto {
   @IsString()
   tableNumber?: string;
 
-  @IsString()
+  @IsNonEmptyString()
+  @IsStringLength(1, 50)
+  @TrimString()
   customerName!: string;
 
-  @IsString()
+  @IsPhoneNumber()
+  @TrimString()
   customerPhone!: string;
 
   @IsOptional()
-  @IsString()
+  @IsStringLength(0, 200)
+  @TrimString()
   remark?: string;
 
-  @IsNumber()
+  @IsAmount()
+  @ToNumber()
   totalAmount!: number;
 }
 

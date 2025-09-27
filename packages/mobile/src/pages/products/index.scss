@@ -1,0 +1,42 @@
+.products-page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding: 32rpx;
+  box-sizing: border-box;
+}
+
+.products-header {
+  margin-bottom: 32rpx;
+}
+
+.products-title {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16rpx;
+}
+
+.products-search {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  box-shadow: 0 12rpx 24rpx rgba(15, 23, 42, 0.06);
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.products-status {
+  margin-top: 120rpx;
+  display: flex;
+  justify-content: center;
+  color: #6b7280;
+}
+
+.products-status__text {
+  font-size: 30rpx;
+}
+
+.products-list {
+  max-height: calc(100vh - 200rpx);
+}

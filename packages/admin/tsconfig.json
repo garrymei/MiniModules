@@ -18,7 +18,9 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "baseUrl": "./src",
-    "paths": {}
+    "paths": {
+      "@minimodules/libs/*": ["../../libs/src/*"]
+    }
   },
   "include": [
     "src/**/*"

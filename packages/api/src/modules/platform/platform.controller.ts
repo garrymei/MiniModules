@@ -1,5 +1,7 @@
 import { Controller, Get, Put, Post, Delete, Param, Body, Query } from '@nestjs/common';
 import { PlatformService, TenantEntitlementDto } from './platform.service';
+import { BatchEntitlementsService } from './services/batch-entitlements.service';
+import { BatchEntitlementsDto, BatchEntitlementsResult } from './dto/batch-entitlements.dto';
 import { TenantEntitlement } from '../../entities/tenant-entitlement.entity';
 import { UsageService } from '../usage/usage.service';
 import { UsageMetric, UsagePeriod } from '../../entities/usage-counter.entity';
@@ -9,6 +11,7 @@ import { ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 export class PlatformController {
   constructor(
     private readonly platformService: PlatformService,
+    private readonly batchEntitlementsService: BatchEntitlementsService,
     private readonly usageService: UsageService,
   ) {}
 
@@ -77,5 +80,43 @@ export class PlatformController {
       success: true,
       message: `Entitlement for module ${moduleKey} removed successfully`,
     };
+  }
+
+  @Post('batch-entitlements')
+  @ApiOperation({ summary: '批量授权操作' })
+  async batchEntitlements(
+    @Body() batchDto: BatchEntitlementsDto,
+  ): Promise<BatchEntitlementsResult> {
+    // 在实际应用中，这里应该从JWT token中获取操作者ID
+    const operatorId = 'system'; // 临时使用
+    return this.batchEntitlementsService.batchEntitlements(batchDto, operatorId);
+  }
+
+  @Post('apply-template')
+  @ApiOperation({ summary: '应用授权模板' })
+  async applyEntitlementTemplate(
+    @Body() body: { templateId: string; tenantIds: string[] },
+  ): Promise<BatchEntitlementsResult> {
+    const operatorId = 'system'; // 临时使用
+    return this.batchEntitlementsService.applyEntitlementTemplate(
+      body.templateId,
+      body.tenantIds,
+      operatorId,
+    );
+  }
+
+  @Get('batch-operations')
+  @ApiOperation({ summary: '获取批量操作历史' })
+  async getBatchOperationHistory(
+    @Query('limit') limit: number = 20,
+    @Query('offset') offset: number = 0,
+  ) {
+    return this.batchEntitlementsService.getBatchOperationHistory(limit, offset);
+  }
+
+  @Get('batch-operations/:operationId')
+  @ApiOperation({ summary: '获取批量操作详情' })
+  async getBatchOperationDetails(@Param('operationId') operationId: string) {
+    return this.batchEntitlementsService.getBatchOperationDetails(operationId);
   }
 }

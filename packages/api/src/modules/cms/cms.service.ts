@@ -272,6 +272,13 @@ export class CMSService {
     byType: Record<CMSContentType, number>;
     byStatus: Record<CMSContentStatus, number>;
     totalViews: number;
+    recentActivity: Array<{
+      id: string;
+      title: string;
+      type: CMSContentType;
+      status: CMSContentStatus;
+      updatedAt: Date;
+    }>;
   }> {
     const contents = await this.cmsContentRepository.find({
       where: { tenantId },
@@ -288,12 +295,180 @@ export class CMSService {
       totalViews += content.viewCount;
     }
 
+    const recentActivity = await this.cmsContentRepository.find({
+      where: { tenantId },
+      select: ['id', 'title', 'type', 'status', 'updatedAt'],
+      order: { updatedAt: 'DESC' },
+      take: 10,
+    });
+
     return {
       total: contents.length,
       byType,
       byStatus,
       totalViews,
+      recentActivity,
     };
+  }
+
+  /**
+   * 批量删除CMS内容
+   */
+  async batchDeleteContent(
+    contentIds: string[],
+    tenantId: string,
+  ): Promise<{ success: string[]; failed: Array<{ id: string; error: string }> }> {
+    const results = { success: [] as string[], failed: [] as Array<{ id: string; error: string }> };
+
+    for (const contentId of contentIds) {
+      try {
+        await this.deleteCMSContent(contentId, tenantId);
+        results.success.push(contentId);
+      } catch (error) {
+        results.failed.push({
+          id: contentId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * 复制CMS内容
+   */
+  async duplicateCMSContent(contentId: string, tenantId: string): Promise<CMSContent> {
+    const originalContent = await this.getCMSContentById(contentId, tenantId);
+    
+    const duplicateData: CreateCMSContentDto = {
+      tenantId,
+      type: originalContent.type,
+      title: `${originalContent.title} (Copy)`,
+      content: originalContent.content,
+      summary: originalContent.summary,
+      coverImage: originalContent.coverImage,
+      images: originalContent.images,
+      jumpType: originalContent.jumpType,
+      jumpUrl: originalContent.jumpUrl,
+      category: originalContent.category,
+      tags: originalContent.tags,
+      sortOrder: originalContent.sortOrder,
+      metadata: originalContent.metadata,
+    };
+
+    return this.createCMSContent(duplicateData);
+  }
+
+  /**
+   * 搜索CMS内容
+   */
+  async searchCMSContent(
+    query: string,
+    tenantId: string,
+    options?: {
+      type?: CMSContentType;
+      status?: CMSContentStatus;
+      category?: string;
+      tags?: string[];
+      page?: number;
+      limit?: number;
+    },
+  ): Promise<{
+    results: CMSContent[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const page = options?.page || 1;
+    const limit = options?.limit || 20;
+    const offset = (page - 1) * limit;
+
+    const queryBuilder = this.cmsContentRepository
+      .createQueryBuilder('content')
+      .where('content.tenantId = :tenantId', { tenantId })
+      .andWhere(
+        '(content.title ILIKE :query OR content.content ILIKE :query OR content.summary ILIKE :query)',
+        { query: `%${query}%` }
+      );
+
+    if (options?.type) {
+      queryBuilder.andWhere('content.type = :type', { type: options.type });
+    }
+
+    if (options?.status) {
+      queryBuilder.andWhere('content.status = :status', { status: options.status });
+    }
+
+    if (options?.category) {
+      queryBuilder.andWhere('content.category = :category', { category: options.category });
+    }
+
+    if (options?.tags && options.tags.length > 0) {
+      queryBuilder.andWhere('content.tags && :tags', { tags: options.tags });
+    }
+
+    const [results, total] = await queryBuilder
+      .orderBy('content.updatedAt', 'DESC')
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      results,
+      total,
+      page,
+      limit,
+    };
+  }
+
+  /**
+   * 获取CMS内容分类
+   */
+  async getContentCategories(tenantId: string): Promise<Array<{
+    category: string;
+    count: number;
+    lastUpdated: Date;
+  }>> {
+    const categories = await this.cmsContentRepository
+      .createQueryBuilder('content')
+      .select('content.category', 'category')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('MAX(content.updatedAt)', 'lastUpdated')
+      .where('content.tenantId = :tenantId', { tenantId })
+      .andWhere('content.category IS NOT NULL')
+      .groupBy('content.category')
+      .orderBy('count', 'DESC')
+      .getRawMany();
+
+    return categories.map(cat => ({
+      category: cat.category,
+      count: parseInt(cat.count),
+      lastUpdated: new Date(cat.lastUpdated),
+    }));
+  }
+
+  /**
+   * 获取CMS内容标签
+   */
+  async getContentTags(tenantId: string): Promise<Array<{
+    tag: string;
+    count: number;
+  }>> {
+    const tags = await this.cmsContentRepository
+      .createQueryBuilder('content')
+      .select('unnest(content.tags)', 'tag')
+      .addSelect('COUNT(*)', 'count')
+      .where('content.tenantId = :tenantId', { tenantId })
+      .andWhere('content.tags IS NOT NULL')
+      .groupBy('tag')
+      .orderBy('count', 'DESC')
+      .getRawMany();
+
+    return tags.map(tag => ({
+      tag: tag.tag,
+      count: parseInt(tag.count),
+    }));
   }
 
   /**

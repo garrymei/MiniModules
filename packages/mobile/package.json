@@ -19,18 +19,21 @@
     "copy-assets": "if exist src\\assets xcopy /E /I src\\assets dist\\assets || echo Assets copied"
   },
   "dependencies": {
-    "miniprogram-api-typings": "^3.12.0",
+    "@minimodules/libs": "workspace:*",
     "@tarojs/components": "^3.6.13",
+    "@tarojs/react": "^3.6.13",
     "@tarojs/runtime": "^3.6.13",
     "@tarojs/taro": "^3.6.13",
-    "@tarojs/react": "^3.6.13",
+    "miniprogram-api-typings": "^3.12.0",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zustand": "^4.5.4",
-    "@minimodules/libs": "workspace:*"
+    "zustand": "^4.5.4"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
+    "@types/react": "^18.2.42",
+    "@types/react-dom": "^18.2.17",
     "@types/wechat-miniprogram": "^3.4.7",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
@@ -39,9 +42,7 @@
     "eslint-plugin-prettier": "^5.1.3",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.2",
-    "typescript": "^5.3.3",
-    "@types/react": "^18.2.42",
-    "@types/react-dom": "^18.2.17"
+    "typescript": "^5.3.3"
   },
   "keywords": [
     "miniprogram",

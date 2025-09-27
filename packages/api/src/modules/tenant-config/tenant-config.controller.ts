@@ -1,8 +1,15 @@
-import { Controller, Get, Put, Post, Param, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { Controller, Get, Put, Post, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { TenantConfigService } from './tenant-config.service';
-import { TenantConfigDto, UpdateTenantConfigDto, ConfigHistoryDto } from './dto/tenant-config.dto';
+import {
+  TenantConfigDto,
+  UpdateTenantConfigDto,
+  ConfigHistoryDto,
+  WorkflowNoteDto,
+  ApproveConfigDto,
+  ConfigDiffResponseDto,
+} from './dto/tenant-config.dto';
 
 @ApiTags('tenant-config')
 @Controller()
@@ -23,6 +30,14 @@ export class TenantConfigController {
   })
   async getTenantConfig(@Param('id') tenantId: string): Promise<TenantConfigDto> {
     return this.tenantConfigService.getTenantConfig(tenantId);
+  }
+
+  @Get('api/tenant/:id/config/meta')
+  @ApiOperation({ summary: '获取租户配置元信息' })
+  @ApiParam({ name: 'id', description: '租户ID' })
+  @ApiResponse({ status: 200, description: '元信息' })
+  async getTenantConfigMeta(@Param('id') tenantId: string) {
+    return this.tenantConfigService.getTenantConfigMeta(tenantId);
   }
 
   @Put('admin/tenant/:id/config')
@@ -67,6 +82,42 @@ export class TenantConfigController {
     return this.tenantConfigService.publishTenantConfig(tenantId, version);
   }
 
+  @Post('admin/tenant/:id/config/submit')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '提交配置进入审批' })
+  async submitConfig(
+    @Param('id') tenantId: string,
+    @Body() body: WorkflowNoteDto,
+  ) {
+    return this.tenantConfigService.submitTenantConfig(tenantId, body);
+  }
+
+  @Post('admin/tenant/:id/config/approve')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '审核配置' })
+  async approveConfig(
+    @Param('id') tenantId: string,
+    @Body() body: ApproveConfigDto,
+    @Query('reviewerId') reviewerId?: string,
+  ) {
+    return this.tenantConfigService.approveTenantConfig(tenantId, body, reviewerId);
+  }
+
+  @Post('admin/tenant/:id/config/rollback/:version')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '回滚到指定版本' })
+  @ApiParam({ name: 'version', description: '被回滚的目标版本' })
+  async rollbackConfig(
+    @Param('id') tenantId: string,
+    @Param('version') version: number,
+    @Body('note') note?: string,
+  ) {
+    return this.tenantConfigService.rollbackTenantConfig(tenantId, Number(version), note);
+  }
+
   @Get('admin/tenant/:id/config/history')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -79,5 +130,19 @@ export class TenantConfigController {
   })
   async getTenantConfigHistory(@Param('id') tenantId: string) {
     return this.tenantConfigService.getTenantConfigHistory(tenantId);
+  }
+
+  @Get('admin/tenant/:id/config/diff')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '对比两个版本的配置差异' })
+  @ApiQuery({ name: 'from', required: true, description: '源版本号' })
+  @ApiQuery({ name: 'to', required: true, description: '目标版本号' })
+  async diffConfig(
+    @Param('id') tenantId: string,
+    @Query('from') fromVersion: number,
+    @Query('to') toVersion: number,
+  ): Promise<ConfigDiffResponseDto> {
+    return this.tenantConfigService.getConfigDiff(tenantId, Number(fromVersion), Number(toVersion));
   }
 }

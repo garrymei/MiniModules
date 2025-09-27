@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { AuditLog, AuditAction, AuditResourceType, AuditResult } from '../../entities/audit-log.entity';
+import { REQUEST } from '@nestjs/core';
+import { Request } from 'express';
 
 export interface CreateAuditLogDto {
   tenantId?: string;
@@ -36,6 +38,8 @@ export interface AuditLogQuery {
 
 @Injectable()
 export class AuditLogService {
+  private readonly logger = new Logger(AuditLogService.name);
+
   constructor(
     @InjectRepository(AuditLog)
     private auditLogRepository: Repository<AuditLog>,
@@ -44,9 +48,99 @@ export class AuditLogService {
   /**
    * 记录审计日志
    */
-  async log(auditData: CreateAuditLogDto): Promise<AuditLog> {
-    const auditLog = this.auditLogRepository.create(auditData);
-    return this.auditLogRepository.save(auditLog);
+  async log(auditData: CreateAuditLogDto, request?: Request): Promise<AuditLog> {
+    // 确保requestId一致性
+    const requestId = this.getRequestId(auditData.requestId, request);
+    
+    const auditLogData = {
+      ...auditData,
+      requestId,
+      // 从请求中获取额外信息
+      ipAddress: auditData.ipAddress || this.getClientIp(request),
+      userAgent: auditData.userAgent || this.getUserAgent(request),
+    };
+
+    const auditLog = this.auditLogRepository.create(auditLogData);
+    const savedLog = await this.auditLogRepository.save(auditLog);
+    
+    this.logger.debug(`Audit log created: ${savedLog.id} for request ${requestId}`);
+    
+    return savedLog;
+  }
+
+  /**
+   * 批量记录审计日志
+   */
+  async logBatch(auditDataList: CreateAuditLogDto[], request?: Request): Promise<AuditLog[]> {
+    const requestId = this.getRequestId(undefined, request);
+    
+    const auditLogs = auditDataList.map(auditData => {
+      const logData = {
+        ...auditData,
+        requestId,
+        ipAddress: auditData.ipAddress || this.getClientIp(request),
+        userAgent: auditData.userAgent || this.getUserAgent(request),
+      };
+      return this.auditLogRepository.create(logData);
+    });
+
+    const savedLogs = await this.auditLogRepository.save(auditLogs);
+    
+    this.logger.debug(`Batch audit logs created: ${savedLogs.length} for request ${requestId}`);
+    
+    return savedLogs;
+  }
+
+  /**
+   * 获取requestId，确保一致性
+   */
+  private getRequestId(auditRequestId?: string, request?: Request): string {
+    // 优先使用审计数据中的requestId
+    if (auditRequestId) {
+      return auditRequestId;
+    }
+    
+    // 从请求对象中获取
+    if (request && (request as any).requestId) {
+      return (request as any).requestId;
+    }
+    
+    // 从请求头中获取
+    if (request && request.headers['x-request-id']) {
+      return request.headers['x-request-id'] as string;
+    }
+    
+    // 生成新的requestId
+    return this.generateRequestId();
+  }
+
+  /**
+   * 获取客户端IP
+   */
+  private getClientIp(request?: Request): string | undefined {
+    if (!request) return undefined;
+    
+    return (
+      request.headers['x-forwarded-for'] as string ||
+      request.headers['x-real-ip'] as string ||
+      request.connection?.remoteAddress ||
+      request.socket?.remoteAddress ||
+      (request.connection as any)?.socket?.remoteAddress
+    )?.split(',')[0]?.trim();
+  }
+
+  /**
+   * 获取用户代理
+   */
+  private getUserAgent(request?: Request): string | undefined {
+    return request?.headers['user-agent'];
+  }
+
+  /**
+   * 生成requestId
+   */
+  private generateRequestId(): string {
+    return `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
@@ -210,5 +304,121 @@ export class AuditLogService {
       limit: 10000, // 导出时增加限制
     });
     return logs;
+  }
+
+  /**
+   * 根据requestId查询审计日志
+   */
+  async findAuditLogsByRequestId(requestId: string): Promise<AuditLog[]> {
+    return this.auditLogRepository.find({
+      where: { requestId },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  /**
+   * 获取请求的完整审计轨迹
+   */
+  async getRequestAuditTrail(requestId: string): Promise<{
+    requestId: string;
+    logs: AuditLog[];
+    summary: {
+      totalActions: number;
+      duration: number;
+      startTime: Date;
+      endTime: Date;
+      userId?: string;
+      tenantId?: string;
+      ipAddress?: string;
+      userAgent?: string;
+    };
+  }> {
+    const logs = await this.findAuditLogsByRequestId(requestId);
+    
+    if (logs.length === 0) {
+      return {
+        requestId,
+        logs: [],
+        summary: {
+          totalActions: 0,
+          duration: 0,
+          startTime: new Date(),
+          endTime: new Date(),
+        },
+      };
+    }
+
+    const startTime = logs[0].createdAt;
+    const endTime = logs[logs.length - 1].createdAt;
+    const duration = endTime.getTime() - startTime.getTime();
+
+    return {
+      requestId,
+      logs,
+      summary: {
+        totalActions: logs.length,
+        duration,
+        startTime,
+        endTime,
+        userId: logs[0].userId,
+        tenantId: logs[0].tenantId,
+        ipAddress: logs[0].ipAddress,
+        userAgent: logs[0].userAgent,
+      },
+    };
+  }
+
+  /**
+   * 清理过期的审计日志
+   */
+  async cleanupExpiredLogs(retentionDays: number = 90): Promise<number> {
+    const expiredDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+    
+    const result = await this.auditLogRepository
+      .createQueryBuilder()
+      .delete()
+      .where('createdAt < :expiredDate', { expiredDate })
+      .execute();
+
+    this.logger.log(`Cleaned up ${result.affected || 0} expired audit logs`);
+    return result.affected || 0;
+  }
+
+  /**
+   * 获取审计日志完整性报告
+   */
+  async getAuditIntegrityReport(tenantId?: string): Promise<{
+    totalLogs: number;
+    logsWithRequestId: number;
+    logsWithoutRequestId: number;
+    uniqueRequestIds: number;
+    averageLogsPerRequest: number;
+    integrityScore: number;
+  }> {
+    const queryBuilder = this.auditLogRepository.createQueryBuilder('audit');
+
+    if (tenantId) {
+      queryBuilder.where('audit.tenantId = :tenantId', { tenantId });
+    }
+
+    const logs = await queryBuilder.getMany();
+    const logsWithRequestId = logs.filter(log => log.requestId).length;
+    const logsWithoutRequestId = logs.length - logsWithRequestId;
+    
+    const uniqueRequestIds = new Set(
+      logs.filter(log => log.requestId).map(log => log.requestId)
+    ).size;
+    
+    const averageLogsPerRequest = uniqueRequestIds > 0 ? logsWithRequestId / uniqueRequestIds : 0;
+    const integrityScore = logs.length > 0 ? (logsWithRequestId / logs.length) * 100 : 100;
+
+    return {
+      totalLogs: logs.length,
+      logsWithRequestId,
+      logsWithoutRequestId,
+      uniqueRequestIds,
+      averageLogsPerRequest,
+      integrityScore,
+    };
   }
 }

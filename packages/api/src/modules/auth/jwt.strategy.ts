@@ -6,6 +6,7 @@ export interface JwtPayload {
   userId: string;
   roles: string[];
   tenants: string[];
+  tenantId?: string;
 }
 
 @Injectable()

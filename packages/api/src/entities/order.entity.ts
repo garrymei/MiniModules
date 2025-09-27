@@ -1,12 +1,12 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 export enum OrderStatus {
   PENDING = 'pending',
-  CONFIRMED = 'confirmed',
-  PREPARING = 'preparing',
-  READY = 'ready',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled'
+  PAID = 'paid',
+  CANCELLED = 'cancelled',
+  USED = 'used',
+  REFUNDING = 'refunding',
+  REFUNDED = 'refunded'
 }
 
 @Entity('orders')
@@ -45,6 +45,10 @@ export class Order {
 
   @Column({ type: 'jsonb', nullable: true })
   metadata: any;
+
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  @Index({ unique: true, where: '"idempotencyKey" IS NOT NULL' })
+  idempotencyKey?: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

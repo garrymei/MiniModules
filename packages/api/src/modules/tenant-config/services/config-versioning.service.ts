@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { TenantModuleConfig } from '../../../entities/tenant-module-config.entity';
+import { TenantConfigRevision, ConfigRevisionStatus } from '../../../entities/tenant-config-revision.entity';
 import { 
   ConfigRevisionDto, 
   ConfigDiffDto, 
@@ -9,7 +10,6 @@ import {
   SubmitConfigDto,
   ApproveConfigDto,
   RollbackConfigDto,
-  ConfigStatus 
 } from '../dto/config-versioning.dto';
 import * as deepDiff from 'deep-diff';
 
@@ -17,153 +17,155 @@ import * as deepDiff from 'deep-diff';
 export class ConfigVersioningService {
   constructor(
     @InjectRepository(TenantModuleConfig)
-    private configRepository: Repository<TenantModuleConfig>,
+    private liveConfigRepository: Repository<TenantModuleConfig>,
+    @InjectRepository(TenantConfigRevision)
+    private revisionRepository: Repository<TenantConfigRevision>,
+    private dataSource: DataSource,
   ) {}
 
   async getConfigRevisions(tenantId: string): Promise<ConfigRevisionListDto> {
-    const revisions = await this.configRepository.find({
+    const revisions = await this.revisionRepository.find({
       where: { tenantId },
       order: { version: 'DESC' },
     });
 
-    const currentPublished = revisions.find(r => r.status === ConfigStatus.PUBLISHED);
+    const liveConfig = await this.liveConfigRepository.findOne({ where: { tenantId } });
 
     return {
       revisions: revisions.map(this.mapToRevisionDto),
-      currentPublishedVersion: currentPublished?.version.toString(),
+      currentPublishedVersion: liveConfig?.version.toString(),
     };
   }
 
-  async saveDraft(tenantId: string, configJson: Record<string, any>): Promise<ConfigRevisionDto> {
-    // 查找当前草稿
-    let draft = await this.configRepository.findOne({
-      where: { tenantId, status: ConfigStatus.DRAFT },
+  async saveDraft(tenantId: string, configJson: Record<string, any>, userId: string): Promise<ConfigRevisionDto> {
+    const latestRevision = await this.getLatestRevision(tenantId);
+    const latestVersion = latestRevision?.version || 0;
+
+    // Find if there is an existing draft for this user
+    let draft = await this.revisionRepository.findOne({
+        where: { tenantId, status: ConfigRevisionStatus.DRAFT, submittedBy: userId }
     });
 
     if (draft) {
-      // 更新现有草稿
-      draft.configJson = configJson;
-      draft.updatedAt = new Date();
+        // Update existing draft
+        draft.configJson = configJson;
     } else {
-      // 创建新草稿
-      const latestVersion = await this.getLatestVersion(tenantId);
-      draft = this.configRepository.create({
-        tenantId,
-        configJson,
-        version: latestVersion + 1,
-        status: ConfigStatus.DRAFT,
-      });
+        // Create a new draft revision
+        draft = this.revisionRepository.create({
+            tenantId,
+            configJson,
+            version: latestVersion + 1, // This is a potential version, will be confirmed on submit
+            status: ConfigRevisionStatus.DRAFT,
+            submittedBy: userId,
+        });
     }
 
-    const saved = await this.configRepository.save(draft);
+    const saved = await this.revisionRepository.save(draft);
     return this.mapToRevisionDto(saved);
   }
 
-  async submitForReview(tenantId: string, submitDto: SubmitConfigDto): Promise<ConfigRevisionDto> {
-    const draft = await this.configRepository.findOne({
-      where: { tenantId, status: ConfigStatus.DRAFT },
+  async submitForReview(tenantId: string, userId: string, submitDto: SubmitConfigDto): Promise<ConfigRevisionDto> {
+    const draft = await this.revisionRepository.findOne({
+      where: { tenantId, status: ConfigRevisionStatus.DRAFT, submittedBy: userId },
+      order: { createdAt: 'DESC' }
     });
 
     if (!draft) {
-      throw new NotFoundException('No draft configuration found');
+      throw new NotFoundException('No draft configuration found to submit.');
     }
 
-    // 验证配置
     await this.validateConfig(draft.configJson);
 
-    draft.status = ConfigStatus.SUBMITTED;
+    const latestVersion = (await this.getLatestRevision(tenantId))?.version || 0;
+
+    draft.status = ConfigRevisionStatus.SUBMITTED;
+    draft.version = latestVersion + 1; // Assign final version number now
     draft.submittedAt = new Date();
-    draft.reviewNote = submitDto.reviewNote;
+    draft.submittedBy = userId;
+    draft.changeReason = submitDto.changeReason;
 
-    const saved = await this.configRepository.save(draft);
+    const saved = await this.revisionRepository.save(draft);
     return this.mapToRevisionDto(saved);
   }
 
-  async approveConfig(tenantId: string, approvedBy: string, approveDto: ApproveConfigDto): Promise<ConfigRevisionDto> {
-    const submitted = await this.configRepository.findOne({
-      where: { tenantId, status: ConfigStatus.SUBMITTED },
-    });
+  async approveConfig(revisionId: string, approvedBy: string, approveDto: ApproveConfigDto): Promise<ConfigRevisionDto> {
+    const revision = await this.findRevisionById(revisionId);
 
-    if (!submitted) {
-      throw new NotFoundException('No submitted configuration found');
+    if (revision.status !== ConfigRevisionStatus.SUBMITTED) {
+      throw new BadRequestException('Only submitted configurations can be approved.');
     }
 
-    submitted.status = ConfigStatus.APPROVED;
-    submitted.approvedBy = approvedBy;
-    submitted.approvedAt = new Date();
-    submitted.reviewNote = approveDto.reviewNote;
+    revision.status = ConfigRevisionStatus.APPROVED;
+    revision.approvedBy = approvedBy;
+    revision.approvedAt = new Date();
+    revision.reviewNote = approveDto.reviewNote;
 
-    const saved = await this.configRepository.save(submitted);
+    const saved = await this.revisionRepository.save(revision);
     return this.mapToRevisionDto(saved);
   }
 
-  async publishConfig(tenantId: string): Promise<ConfigRevisionDto> {
-    const approved = await this.configRepository.findOne({
-      where: { tenantId, status: ConfigStatus.APPROVED },
-    });
+  async publishConfig(revisionId: string, publishedBy: string): Promise<ConfigRevisionDto> {
+    const revision = await this.findRevisionById(revisionId);
 
-    if (!approved) {
-      throw new NotFoundException('No approved configuration found');
+    if (revision.status !== ConfigRevisionStatus.APPROVED) {
+      throw new BadRequestException('Only approved configurations can be published.');
     }
 
-    // 将当前已发布的配置状态改为历史
-    await this.configRepository.update(
-      { tenantId, status: ConfigStatus.PUBLISHED },
-      { status: ConfigStatus.PUBLISHED } // 保持已发布状态，但标记为历史版本
-    );
+    await this.dataSource.transaction(async manager => {
+        // Upsert the live configuration
+        await manager.upsert(TenantModuleConfig, {
+            tenantId: revision.tenantId,
+            configJson: revision.configJson,
+            version: revision.version,
+            publishedAt: new Date(),
+            publishedBy: publishedBy,
+        }, ['tenantId']);
 
-    // 发布新配置
-    approved.status = ConfigStatus.PUBLISHED;
-    approved.publishedAt = new Date();
+        // Update the revision status
+        revision.status = ConfigRevisionStatus.PUBLISHED;
+        revision.publishedAt = new Date();
+        await manager.save(revision);
+    });
 
-    const saved = await this.configRepository.save(approved);
-    return this.mapToRevisionDto(saved);
+    return this.mapToRevisionDto(revision);
   }
 
-  async rollbackToVersion(tenantId: string, targetVersion: number, reason?: string): Promise<ConfigRevisionDto> {
-    const targetConfig = await this.configRepository.findOne({
-      where: { tenantId, version: targetVersion },
+  async rollbackToVersion(tenantId: string, targetVersion: number, userId: string, reason: string): Promise<ConfigRevisionDto> {
+    const targetRevision = await this.revisionRepository.findOne({
+      where: { tenantId, version: targetVersion, status: ConfigRevisionStatus.PUBLISHED },
     });
 
-    if (!targetConfig) {
-      throw new NotFoundException(`Configuration version ${targetVersion} not found`);
+    if (!targetRevision) {
+      throw new NotFoundException(`Published configuration version ${targetVersion} not found.`);
     }
 
-    // 创建新的回滚版本
-    const latestVersion = await this.getLatestVersion(tenantId);
-    const rollbackConfig = this.configRepository.create({
-      tenantId,
-      configJson: targetConfig.configJson,
-      version: latestVersion + 1,
-      status: ConfigStatus.PUBLISHED,
-      publishedAt: new Date(),
-      reviewNote: reason ? `Rollback to version ${targetVersion}: ${reason}` : `Rollback to version ${targetVersion}`,
+    // Create a new draft based on the old version's config
+    const newDraft = this.revisionRepository.create({
+        tenantId,
+        configJson: targetRevision.configJson,
+        status: ConfigRevisionStatus.DRAFT,
+        submittedBy: userId,
+        changeReason: reason || `Rollback to version ${targetVersion}`,
     });
 
-    // 将当前已发布的配置标记为历史
-    await this.configRepository.update(
-      { tenantId, status: ConfigStatus.PUBLISHED },
-      { status: ConfigStatus.PUBLISHED }
-    );
-
-    const saved = await this.configRepository.save(rollbackConfig);
+    const saved = await this.revisionRepository.save(newDraft);
     return this.mapToRevisionDto(saved);
   }
 
   async getConfigDiff(tenantId: string, version1: number, version2: number): Promise<ConfigDiffDto[]> {
     const [config1, config2] = await Promise.all([
-      this.configRepository.findOne({ where: { tenantId, version: version1 } }),
-      this.configRepository.findOne({ where: { tenantId, version: version2 } }),
+      this.revisionRepository.findOne({ where: { tenantId, version: version1 } }),
+      this.revisionRepository.findOne({ where: { tenantId, version: version2 } }),
     ]);
 
     if (!config1 || !config2) {
       throw new NotFoundException('One or both configuration versions not found');
     }
 
-    const diff = deepDiff.diff(config1.configJson, config2.configJson);
-    if (!diff) return [];
+    const diffs = deepDiff.diff(config1.configJson, config2.configJson);
+    if (!diffs) return [];
 
-    return diff.map(d => ({
+    return diffs.map(d => ({
       path: d.path?.join('.') || '',
       operation: this.mapDiffOperation(d.kind),
       oldValue: (d as any).lhs,
@@ -172,26 +174,26 @@ export class ConfigVersioningService {
   }
 
   async getPublishedConfig(tenantId: string): Promise<Record<string, any> | null> {
-    const published = await this.configRepository.findOne({
-      where: { tenantId, status: ConfigStatus.PUBLISHED },
-      order: { publishedAt: 'DESC' },
-    });
-
-    return published?.configJson || null;
+    const liveConfig = await this.liveConfigRepository.findOne({ where: { tenantId } });
+    return liveConfig?.configJson || null;
   }
 
-  private async getLatestVersion(tenantId: string): Promise<number> {
-    const latest = await this.configRepository.findOne({
+  private async getLatestRevision(tenantId: string): Promise<TenantConfigRevision | null> {
+    return this.revisionRepository.findOne({
       where: { tenantId },
       order: { version: 'DESC' },
     });
+  }
 
-    return latest?.version || 0;
+  private async findRevisionById(id: string): Promise<TenantConfigRevision> {
+      const revision = await this.revisionRepository.findOne({ where: { id } });
+      if (!revision) {
+          throw new NotFoundException(`Configuration revision with ID ${id} not found`);
+      }
+      return revision;
   }
 
   private async validateConfig(configJson: Record<string, any>): Promise<void> {
-    // 这里可以添加JSON Schema验证
-    // 暂时只做基本验证
     if (!configJson || typeof configJson !== 'object') {
       throw new BadRequestException('Invalid configuration format');
     }
@@ -206,20 +208,22 @@ export class ConfigVersioningService {
     }
   }
 
-  private mapToRevisionDto(config: TenantModuleConfig): ConfigRevisionDto {
+  private mapToRevisionDto(revision: TenantConfigRevision): ConfigRevisionDto {
     return {
-      id: config.id,
-      tenantId: config.tenantId,
-      configJson: config.configJson,
-      version: config.version.toString(),
-      status: config.status as ConfigStatus,
-      approvedBy: config.approvedBy,
-      reviewNote: config.reviewNote,
-      submittedAt: config.submittedAt?.toISOString(),
-      approvedAt: config.approvedAt?.toISOString(),
-      publishedAt: config.publishedAt?.toISOString(),
-      createdAt: config.createdAt.toISOString(),
-      updatedAt: config.updatedAt.toISOString(),
+      id: revision.id,
+      tenantId: revision.tenantId,
+      version: revision.version.toString(),
+      status: revision.status,
+      configJson: revision.configJson,
+      changeReason: revision.changeReason,
+      submittedBy: revision.submittedBy,
+      approvedBy: revision.approvedBy,
+      reviewNote: revision.reviewNote,
+      submittedAt: revision.submittedAt?.toISOString(),
+      approvedAt: revision.approvedAt?.toISOString(),
+      publishedAt: revision.publishedAt?.toISOString(),
+      createdAt: revision.createdAt.toISOString(),
+      updatedAt: revision.updatedAt.toISOString(),
     };
   }
 }

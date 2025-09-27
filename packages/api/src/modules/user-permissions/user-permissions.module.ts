@@ -1,16 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TenantEntitlement } from '../../entities/tenant-entitlement.entity';
-import { UserPermissionsController } from './user-permissions.controller';
 import { UserPermissionsService } from './user-permissions.service';
-import { PlatformModule } from '../platform/platform.module';
+import { User } from '../../entities/user.entity';
+import { Tenant } from '../../entities/tenant.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([TenantEntitlement]),
-    PlatformModule,
-  ],
-  controllers: [UserPermissionsController],
+  imports: [TypeOrmModule.forFeature([User, Tenant])],
   providers: [UserPermissionsService],
   exports: [UserPermissionsService],
 })

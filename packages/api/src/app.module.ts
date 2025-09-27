@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
-import { HealthController } from './modules/health/health.controller';
+import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/auth.guard';
 import { TenantConfigModule } from './modules/tenant-config/tenant-config.module';
@@ -39,9 +39,18 @@ import { CMSArticle } from './entities/cms-article.entity';
 import { ExportJob } from './entities/export-job.entity';
 import { Webhook } from './entities/webhook.entity';
 import { WebhookDelivery } from './entities/webhook-delivery.entity';
+import { User } from './entities/user.entity';
+import { Role } from './entities/role.entity';
+import { RolePermission } from './entities/role-permission.entity';
+import { UserRole } from './entities/user-role.entity';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { I18nModule } from './common/i18n/i18n.module';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { I18nInterceptor } from './common/i18n/i18n.interceptor';
+import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
+import { CacheService } from './common/services/cache.service';
+import { CacheInterceptor } from './common/interceptors/cache.interceptor';
+import { CustomValidationPipe } from './common/pipes/validation.pipe';
 
 @Module({
   imports: [
@@ -73,7 +82,11 @@ import { I18nInterceptor } from './common/i18n/i18n.interceptor';
           CMSArticle,
           ExportJob,
           Webhook,
-          WebhookDelivery
+          WebhookDelivery,
+          User,
+          Role,
+          RolePermission,
+          UserRole
         ],
         synchronize: false,
         logging: process.env.TYPEORM_LOGGING === 'true',
@@ -96,12 +109,22 @@ import { I18nInterceptor } from './common/i18n/i18n.interceptor';
     ExportModule,
     FilesModule,
     ThemeModule,
+    HealthModule,
   ],
-  controllers: [HealthController],
+  controllers: [],
   providers: [
+    CacheService,
     {
       provide: APP_INTERCEPTOR,
       useClass: I18nInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: PerformanceInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: CacheInterceptor,
     },
     {
       provide: APP_GUARD,
@@ -111,6 +134,16 @@ import { I18nInterceptor } from './common/i18n/i18n.interceptor';
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
     },
+    {
+      provide: 'APP_PIPE',
+      useClass: CustomValidationPipe,
+    },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(RequestIdMiddleware)
+      .forRoutes('*');
+  }
+}

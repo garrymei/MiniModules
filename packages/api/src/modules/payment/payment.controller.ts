@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
-import { PaymentService, CreatePaymentDto, PaymentNotifyDto } from './payment.service';
+import { PaymentService } from './payment.service';
+import { CreatePaymentDto, PaymentNotifyDto } from './dto/payment.dto';
 import { JwtAuthGuard } from '../auth/auth.guard';
 import { Public } from '../auth/public.decorator';
 
@@ -19,10 +20,11 @@ export class PaymentController {
     schema: {
       type: 'object',
       properties: {
-        prepayId: { type: 'string', description: '预支付ID' },
+        package: { type: 'string', description: '预支付ID包装格式 prepay_id=xxx' },
         nonceStr: { type: 'string', description: '随机字符串' },
         timeStamp: { type: 'string', description: '时间戳' },
         paySign: { type: 'string', description: '支付签名' },
+        signType: { type: 'string', description: '签名类型' },
         orderId: { type: 'string', description: '订单ID' },
         amount: { type: 'number', description: '支付金额' }
       }
@@ -96,11 +98,12 @@ export class PaymentController {
   })
   async mockPaymentSuccess(@Param('orderId') orderId: string) {
     const mockNotify: PaymentNotifyDto = {
-      orderId,
+      paymentId: orderId,
       transactionId: `mock_txn_${Date.now()}`,
-      status: 'success',
-      amount: 100, // 模拟金额
-      timestamp: new Date().toISOString(),
+      status: 'paid',
+      paidAt: new Date().toISOString(),
+      sign: 'mock_sign',
+      rawData: {},
     };
     return this.paymentService.handlePaymentNotify(mockNotify);
   }
@@ -121,11 +124,12 @@ export class PaymentController {
   })
   async mockPaymentFailed(@Param('orderId') orderId: string) {
     const mockNotify: PaymentNotifyDto = {
-      orderId,
+      paymentId: orderId,
       transactionId: `mock_txn_${Date.now()}`,
       status: 'failed',
-      amount: 100,
-      timestamp: new Date().toISOString(),
+      paidAt: new Date().toISOString(),
+      sign: 'mock_sign',
+      rawData: {},
     };
     return this.paymentService.handlePaymentNotify(mockNotify);
   }

@@ -1,0 +1,146 @@
+.product-detail-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-detail__gallery {
+  height: 520rpx;
+}
+
+.product-detail__image {
+  width: 100%;
+  height: 100%;
+}
+
+.product-detail__info {
+  padding: 32rpx;
+  background: #ffffff;
+}
+
+.product-detail__name {
+  font-size: 42rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.product-detail__category {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #64748b;
+}
+
+.product-detail__price {
+  margin-top: 16rpx;
+  font-size: 40rpx;
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.product-detail__desc {
+  margin-top: 20rpx;
+  font-size: 28rpx;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.product-detail__section {
+  margin-top: 16rpx;
+  background: #ffffff;
+  padding: 32rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.sku-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.sku-item {
+  min-width: 180rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid #e2e8f0;
+  padding: 20rpx;
+  text-align: center;
+  background: #f8fafc;
+  color: #1f2937;
+}
+
+.sku-item--active {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+}
+
+.sku-item__name {
+  font-size: 28rpx;
+  display: block;
+}
+
+.sku-item__price {
+  font-size: 26rpx;
+  color: #64748b;
+  margin-top: 8rpx;
+}
+
+.quantity-control {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.quantity-btn {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 16rpx;
+  background: #e2e8f0;
+  color: #1e293b;
+  font-size: 36rpx;
+}
+
+.quantity-value {
+  font-size: 32rpx;
+  min-width: 64rpx;
+  text-align: center;
+}
+
+.product-detail__actions {
+  margin-top: auto;
+  display: flex;
+  gap: 24rpx;
+  padding: 32rpx;
+  background: #ffffff;
+  box-shadow: 0 -12rpx 32rpx rgba(15, 23, 42, 0.08);
+}
+
+.action-btn {
+  flex: 1;
+  height: 96rpx;
+  border-radius: 20rpx;
+  font-size: 30rpx;
+}
+
+.action-btn--cart {
+  background: #f1f5f9;
+  color: #1f2937;
+}
+
+.action-btn--primary {
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+  color: #fff;
+  font-weight: 600;
+}
+
+.product-detail__status {
+  padding: 160rpx 0;
+  display: flex;
+  justify-content: center;
+  color: #6b7280;
+}

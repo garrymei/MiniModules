@@ -231,5 +231,8 @@
     "weeksAgo": "{count} weeks ago",
     "monthsAgo": "{count} months ago",
     "yearsAgo": "{count} years ago"
+  },
+  "config": {
+    "approvalEnhancementNeeded": "Config approval/rollback/diff APIs exist, but the approval toggle, role configuration, and auditing still need to be strengthened."
   }
 }

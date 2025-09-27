@@ -48,6 +48,13 @@ interface LoadOptions {
   refresh?: boolean
 }
 
+export const fetchTenantConfigMeta = async (tenantId: string): Promise<{ version: number; updatedAt: string; status: string }> => {
+  return request<{ version: number; updatedAt: string; status: string }>({
+    path: `/tenant/${tenantId}/config/meta`,
+    method: "GET",
+  })
+}
+
 export const loadTenantConfig = async (
   tenantId?: string,
   options: LoadOptions = {},
@@ -55,9 +62,20 @@ export const loadTenantConfig = async (
   const resolvedTenantId = tenantId || getStoredTenantId()
   const { refresh = false } = options
 
-  if (!refresh) {
-    const cached = getCachedTenantConfig()
-    if (cached && cached.tenantId === resolvedTenantId) {
+  const cached = getCachedTenantConfig()
+
+  if (!refresh && cached && cached.tenantId === resolvedTenantId) {
+    return cached
+  }
+
+  if (cached && cached.updatedAt && !refresh) {
+    try {
+      const meta = await fetchTenantConfigMeta(resolvedTenantId)
+      if (meta.updatedAt === cached.updatedAt) {
+        return cached
+      }
+    } catch (error) {
+      console.warn("Failed to fetch tenant config meta", error)
       return cached
     }
   }

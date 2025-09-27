@@ -26,6 +26,19 @@ export class BusinessException extends HttpException {
     this.requestId = requestIdValue;
   }
 
+  /**
+   * 从请求上下文创建业务异常
+   */
+  static fromRequest(
+    code: BusinessErrorCode,
+    message?: string,
+    status: HttpStatus = HttpStatus.BAD_REQUEST,
+    request?: any,
+  ): BusinessException {
+    const requestId = request?.requestId || BusinessException.generateRequestId();
+    return new BusinessException(code, message, status, requestId);
+  }
+
   private static generateRequestId(): string {
     return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
@@ -75,11 +88,74 @@ export class BusinessException extends HttpException {
     );
   }
 
-  static insufficientStock(productName: string, requestId?: string): BusinessException {
+  static moduleDisabled(moduleKey: string, requestId?: string): BusinessException {
     return new BusinessException(
-      BusinessErrorCode.INSUFFICIENT_STOCK,
-      `Insufficient stock for ${productName}`,
+      BusinessErrorCode.MODULE_DISABLED,
+      `Module ${moduleKey} is disabled`,
+      HttpStatus.FORBIDDEN,
+      requestId,
+    );
+  }
+
+  static conflictSlot(resourceId: string, timeSlot: string, requestId?: string): BusinessException {
+    return new BusinessException(
+      BusinessErrorCode.CONFLICT_SLOT,
+      `Time slot ${timeSlot} conflicts for resource ${resourceId}`,
+      HttpStatus.CONFLICT,
+      requestId,
+    );
+  }
+
+  static outOfStock(skuName: string, requested: number, available: number, requestId?: string): BusinessException {
+    return new BusinessException(
+      BusinessErrorCode.OUT_OF_STOCK,
+      `Out of stock: ${skuName}. Requested: ${requested}, Available: ${available}`,
+      HttpStatus.CONFLICT,
+      requestId,
+    );
+  }
+
+  static bookingTimeConflict(resourceId: string, startTime: string, endTime: string, requestId?: string): BusinessException {
+    return new BusinessException(
+      BusinessErrorCode.BOOKING_TIME_CONFLICT,
+      `Booking time conflict for resource ${resourceId} at ${startTime}-${endTime}`,
+      HttpStatus.CONFLICT,
+      requestId,
+    );
+  }
+
+  static verificationCodeExpired(requestId?: string): BusinessException {
+    return new BusinessException(
+      BusinessErrorCode.VERIFICATION_CODE_EXPIRED,
+      'Verification code has expired',
       HttpStatus.BAD_REQUEST,
+      requestId,
+    );
+  }
+
+  static verificationCodeInvalid(requestId?: string): BusinessException {
+    return new BusinessException(
+      BusinessErrorCode.VERIFICATION_CODE_INVALID,
+      'Verification code is invalid',
+      HttpStatus.BAD_REQUEST,
+      requestId,
+    );
+  }
+
+  static verificationCodeUsed(requestId?: string): BusinessException {
+    return new BusinessException(
+      BusinessErrorCode.VERIFICATION_CODE_USED,
+      'Verification code has already been used',
+      HttpStatus.BAD_REQUEST,
+      requestId,
+    );
+  }
+
+  static verificationAttemptsExceeded(requestId?: string): BusinessException {
+    return new BusinessException(
+      BusinessErrorCode.VERIFICATION_ATTEMPTS_EXCEEDED,
+      'Too many verification attempts',
+      HttpStatus.TOO_MANY_REQUESTS,
       requestId,
     );
   }

@@ -69,51 +69,50 @@ export class SearchService {
     tenantId: string | undefined,
     limit: number,
   ): Promise<SearchResultItem[]> {
+    // 使用全文搜索索引提高性能
     const qb = this.productRepository
       .createQueryBuilder('product')
       .select([
-        'product.id AS id',
-        'product.name AS title',
-        'product.description AS description',
-        'product.category AS category',
-        'product.type AS type',
-        'product.images AS images',
-        'product.updatedAt AS updatedAt',
-        `(
-          (CASE WHEN LOWER(product.name) LIKE :pattern THEN 3 ELSE 0 END) +
-          (CASE WHEN product.category IS NOT NULL AND LOWER(product.category) LIKE :pattern THEN 2 ELSE 0 END) +
-          (CASE WHEN product.description IS NOT NULL AND LOWER(product.description) LIKE :pattern THEN 1 ELSE 0 END)
+        'product.id',
+        'product.name',
+        'product.description',
+        'product.category',
+        'product.type',
+        'product.images',
+        'product.updatedAt',
+        `ts_rank(
+          to_tsvector('english', product.name || ' ' || COALESCE(product.description, '') || ' ' || COALESCE(product.category, '')),
+          plainto_tsquery('english', :searchTerm)
         ) AS score`,
       ])
       .where('product.status = :status', { status: ProductStatus.ACTIVE })
       .andWhere('product.isAvailable = true')
       .andWhere(
-        'LOWER(product.name) LIKE :pattern OR (product.category IS NOT NULL AND LOWER(product.category) LIKE :pattern) OR (product.description IS NOT NULL AND LOWER(product.description) LIKE :pattern)',
-        { pattern: lowerPattern },
+        `to_tsvector('english', product.name || ' ' || COALESCE(product.description, '') || ' ' || COALESCE(product.category, '')) @@ plainto_tsquery('english', :searchTerm)`,
+        { searchTerm: lowerPattern.replace(/%/g, '') }
       )
       .orderBy('score', 'DESC')
       .addOrderBy('product.updatedAt', 'DESC')
-      .take(limit);
+      .limit(limit);
 
     if (tenantId) {
       qb.andWhere('product.tenantId = :tenantId', { tenantId });
     }
 
-    const rows = await qb.getRawMany();
+    const products = await qb.getMany();
 
-    return rows
-      .filter((row) => Number(row.score) > 0)
-      .map((row) => ({
+    return products
+      .map((product) => ({
         type: 'product' as SearchResultType,
-        id: row.id,
-        title: row.title,
-        description: row.description,
-        score: Number(row.score),
-        updatedAt: new Date(row.updatedAt),
+        id: product.id,
+        title: product.name,
+        description: product.description,
+        score: 1, // 全文搜索的分数由数据库计算
+        updatedAt: product.updatedAt,
         metadata: {
-          category: row.category,
-          productType: row.type,
-          thumbnail: this.extractFirstImage(row.images),
+          category: product.category,
+          productType: product.type,
+          thumbnail: this.extractFirstImage(product.images),
         },
       }));
   }

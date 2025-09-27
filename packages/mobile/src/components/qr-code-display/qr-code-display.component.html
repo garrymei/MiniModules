@@ -1,0 +1,110 @@
+<div class="qr-code-display-container">
+  <!-- 标题 -->
+  <div class="qr-code-header" *ngIf="title">
+    <h3 class="qr-code-title">{{ title }}</h3>
+    <p class="qr-code-description" *ngIf="description">{{ description }}</p>
+  </div>
+
+  <!-- 二维码显示区域 -->
+  <div class="qr-code-content">
+    <!-- 加载状态 -->
+    <div class="qr-code-loading" *ngIf="loading">
+      <div class="loading-spinner"></div>
+      <p>生成二维码中...</p>
+    </div>
+
+    <!-- 错误状态 -->
+    <div class="qr-code-error" *ngIf="error && !loading">
+      <div class="error-icon">⚠️</div>
+      <p class="error-message">{{ error }}</p>
+      <button class="btn btn-primary" (click)="generateQRCode()">重试</button>
+    </div>
+
+    <!-- 二维码图片 -->
+    <div class="qr-code-image-container" *ngIf="qrCodeImage && !loading && !error">
+      <img [src]="qrCodeImage" [alt]="title" class="qr-code-image">
+      
+      <!-- 过期遮罩 -->
+      <div class="qr-code-overlay" *ngIf="isExpired">
+        <div class="overlay-content">
+          <div class="overlay-icon">⏰</div>
+          <p class="overlay-text">二维码已过期</p>
+          <button class="btn btn-primary" (click)="refreshQRCode()">刷新</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 二维码信息 -->
+    <div class="qr-code-info" *ngIf="qrCodeImage && !loading && !error">
+      <div class="qr-code-meta">
+        <div class="meta-item" *ngIf="getQRCodeId()">
+          <span class="meta-label">ID:</span>
+          <span class="meta-value">{{ getQRCodeId() }}</span>
+        </div>
+        
+        <div class="meta-item">
+          <span class="meta-label">类型:</span>
+          <span class="meta-value">{{ getQRCodeType() }}</span>
+        </div>
+        
+        <div class="meta-item" *ngIf="remainingTime">
+          <span class="meta-label">剩余时间:</span>
+          <span class="meta-value" [class.expired]="isExpired">{{ remainingTime }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 操作按钮 -->
+  <div class="qr-code-actions" *ngIf="showActions && qrCodeImage && !loading && !error">
+    <button 
+      class="btn btn-primary" 
+      (click)="saveToAlbum()"
+      [disabled]="isExpired"
+    >
+      📱 保存到相册
+    </button>
+    
+    <button 
+      class="btn btn-secondary" 
+      (click)="shareQRCode()"
+      [disabled]="isExpired"
+    >
+      📤 分享
+    </button>
+    
+    <button 
+      class="btn btn-outline" 
+      (click)="refreshQRCode()"
+    >
+      🔄 刷新
+    </button>
+  </div>
+
+  <!-- 使用说明 -->
+  <div class="qr-code-instructions" *ngIf="!isExpired">
+    <div class="instruction-item">
+      <div class="instruction-icon">📱</div>
+      <div class="instruction-text">
+        <strong>出示二维码</strong>
+        <p>向商家出示此二维码进行核销</p>
+      </div>
+    </div>
+    
+    <div class="instruction-item">
+      <div class="instruction-icon">⏰</div>
+      <div class="instruction-text">
+        <strong>注意时效</strong>
+        <p>二维码有时效性，过期后请刷新</p>
+      </div>
+    </div>
+    
+    <div class="instruction-item">
+      <div class="instruction-icon">💾</div>
+      <div class="instruction-text">
+        <strong>保存备用</strong>
+        <p>建议保存到相册以备不时之需</p>
+      </div>
+    </div>
+  </div>
+</div>
